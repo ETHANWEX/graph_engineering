@@ -1,0 +1,41 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "final_acceptance_required": {
+      "title": "Final Acceptance Required",
+      "type": "boolean"
+    },
+    "interrupt_allowed": {
+      "title": "Interrupt Allowed",
+      "type": "boolean"
+    },
+    "non_blocking_queries": {
+      "title": "Non Blocking Queries",
+      "type": "boolean"
+    },
+    "pause_allowed": {
+      "title": "Pause Allowed",
+      "type": "boolean"
+    },
+    "revision_creates_new_contract": {
+      "const": true,
+      "default": true,
+      "title": "Revision Creates New Contract",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "non_blocking_queries",
+    "pause_allowed",
+    "interrupt_allowed",
+    "final_acceptance_required"
+  ],
+  "title": "HumanControlPolicy",
+  "type": "object"
+}

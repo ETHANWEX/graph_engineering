@@ -1,25 +1,27 @@
 # Graph Engineering 设计文档
 
-> 状态：Draft，等待 Review
+> 状态：Phase 0 基线已对齐，后续阶段决策继续通过 ADR 冻结
 >
-> 文档版本：0.1
+> 文档版本：0.2
 >
-> 目标：定义一个平台无关的自治软件开发控制层。用户在任务开始阶段通过自然语言完成需求澄清和执行授权，系统随后自动完成实现、验证、修复和审查，最后交付证据充分的成果供用户验收。
+> 目标：定义一个平台无关的自治软件开发控制层。Human 通过持续存在的自然语言控制面对项目定义需求、授权、查询、暂停、中断、修订和验收；系统在已确认边界内自动完成实现、验证、修复和审查，并在每个终态交付证据充分的报告。
 
 ## 1. Review 时需要优先确认的决策
 
-以下决策会显著影响实现，请在开始编码前确认：
+以下决策构成 Phase 0 的已对齐基线。后续如果修改，必须通过 ADR 记录影响和迁移方案：
 
 1. Graph Engineering 是独立控制层，而不是 Codex 专属插件。
 2. Codex 是第一个 Coding Executor；Claude Code 在核心协议稳定后接入。
-3. 初始交互使用 `ge start` 提供自然语言会话；Codex Plugin 后续作为等价入口。
+3. 初始交互使用 `ge start` 提供持续存在的 Human Control Conversation；Codex Plugin 和未来 UI 作为同一控制面的等价入口。
 4. Discovery Graph 和 Execution Graph 严格分离；用户确认后冻结 Contract 与 Verifier。
-5. 自治执行期间不询问用户，不降低验收标准；无法完成时停止并生成失败报告。
+5. 自治执行期间不发起普通需求追问、不降低验收标准；Human 可以随时通过自然语言无干扰地查询进度，也可以暂停、中断或发起 Contract 修订。
 6. Runtime 外部持久化所有关键状态，不依赖 Codex Session 的上下文或 compact。
 7. Verifier 优先使用声明式配置，无法表达时才允许 Codex 生成代码。
 8. 已冻结的 Contract、Verifier 和验收证据对实现 Agent 只读。
-9. MVP 建议使用 Python 3.12 实现，采用 SQLite、Pydantic、Typer、asyncio 和 pytest；该技术栈仍可在 Review 中调整。
+9. Phase 0 和 MVP 使用 Python 3.12、SQLite、Pydantic、Typer、asyncio 和 pytest；如需更换语言或核心存储，必须新增 ADR。
 10. MVP 先实现单机、单任务、串行图；并行节点、远程 Worker 和可视化界面后置。
+11. 自然语言先编译为受限、强类型、可审计的 Control Intent，再由确定性 Runtime 执行；Control Conversation 不能直接修改执行状态或工作区。
+12. 每个 Run 在 `succeeded`、`failed`、`interrupted`、`cancelled`、`rejected` 等终态都必须生成 Final Report；报告不依赖最后一个 Agent Session。
 
 ## 2. 背景与问题定义
 
@@ -33,6 +35,9 @@
 - Agent 可能通过修改测试或验收脚本使错误实现通过。
 - 失败后难以判断应该重试、修复代码、重跑基础设施，还是终止。
 - 更换 Codex、Claude Code 等工具时，任务状态和工作流无法迁移。
+- Human 查询进度时可能污染正在执行的 Coding Agent 上下文或打断开发。
+- Human 发现方向错误时缺少可审计的暂停、中断、修订和重新开始机制。
+- 任务失败或中断后缺少仍然可交付的执行报告和残留副作用说明。
 
 本项目将自治开发过程建模为持久化执行图，由确定性的 Graph Runtime 管理状态、边界和证据，由 Coding Executor 完成需要模型推理的节点。
 
@@ -40,7 +45,7 @@
 
 GitHub Description 建议：
 
-> 面向自治软件开发的图工程工具：人在起点定义需求与边界，由 Coding Agent 自动规划、实现、测试和审查，最终交付可验证成果供人验收。
+> 面向自治软件开发的图工程控制层：Human 通过自然语言定义边界、持续观察并保留中断权，由 Coding Agent 和确定性工具自动规划、实现、验证和审查，最终以可审计报告供 Human 验收。
 
 核心关系：
 
@@ -70,6 +75,10 @@ Graph Engineering
 - 将长任务拆成多个上下文受限的 Agent Session。
 - 提供从需求到代码、测试、审查和交付物的证据链。
 - 最终结果由人验收，MVP 不默认自动合并代码。
+- 提供与执行 Agent 隔离的自然语言 Human Control Conversation。
+- 支持不打断 Execution Graph 的进度、风险、预算和证据查询。
+- 支持 Human 通过自然语言暂停、中断、修订方向和重新开始。
+- 为所有终态生成不可变的 Final Report，而不只为成功任务生成报告。
 
 ### 4.2 非目标
 
@@ -80,6 +89,7 @@ Graph Engineering
 - 不以替代 GitHub Actions、Temporal、Dagster 等通用工作流系统为目标。
 - 不保证任意自然语言需求都能在无人干预下成功完成。
 - 不允许 Agent 在执行阶段自行改变需求或验收标准。
+- 不让自然语言直接成为 Runtime 的执行协议；所有控制行为必须经过结构化意图、策略和状态校验。
 
 ## 5. 用户体验
 
@@ -88,7 +98,7 @@ Graph Engineering
 ```text
 ge init
   ↓
-ge start
+ge start → 建立项目级 Human Control Conversation
   ↓
 自然语言需求讨论与代码库探索
   ↓
@@ -98,11 +108,14 @@ ge start
   ↓
 冻结 Contract 和 Verifier
   ↓
-自治实现、测试、修复、审查和交付
+自治实现、测试、修复、审查和交付 ←── Human 可随时自然语言查询
+  │                                      Human 可随时暂停或中断
+  ├── 方向不变：resume
+  └── 方向变化：Contract vN+1 → 重新确认 → 新 Run
   ↓
-ge report
+所有终态生成 Final Report
   ↓
-ge accept / ge reject
+Human 自然语言 accept / reject / revise
 ```
 
 ### 5.2 交互示例
@@ -132,10 +145,69 @@ ge accept / ge reject
 - 不再发起普通需求问题。
 - 不请求扩大权限。
 - 不修改冻结的验收标准。
+- Human 的只读咨询由独立 Observer/Reporter 处理，不进入 Implementer、Reviewer 或 Verifier Session。
+- 查询不能改变 Graph 状态、路由、Agent 上下文、工作区内容或预算；Reporter 自身成本单独记录。
 - 遇到实现失败时在预算内自动修复。
 - 遇到 Verifier 基础设施错误时按策略重试，不能误判为代码失败。
-- 预算耗尽、权限不足或契约矛盾时停止并生成报告。
+- 收到暂停或中断意图后先建立执行屏障，禁止启动新节点和新外部副作用，再在安全点 checkpoint。
+- 预算耗尽、权限不足、契约矛盾或 Human 中断时停止并生成对应终态报告。
 - 默认创建分支或 Pull Request，不自动合并。
+
+### 5.4 Human Control Conversation
+
+每个项目提供一个持续存在的自然语言控制会话，CLI、Plugin、MCP 和未来 UI 都只是同一控制面的前端。对话关闭、压缩或更换设备不会影响 Run；权威状态始终位于 Runtime。
+
+Human Gateway 将消息编译为受限的 `ControlIntent`：
+
+```yaml
+id: intent-456
+source_message_id: message-789
+actor: human-user-id
+project_id: project-1
+run_id: run-123
+action: interrupt_and_revise
+urgency: immediate
+reason: "架构方向需要调整"
+proposed_contract_delta: {}
+confidence: 0.97
+requires_confirmation: false
+```
+
+允许的 MVP 意图包括：
+
+| 意图 | 默认处理 |
+|---|---|
+| `query_progress`、`query_risk`、`query_evidence` | 只读执行，不打断 Execution Graph |
+| `pause` | 立即阻止新工作，在安全点进入 `paused` |
+| `resume` | Contract 未变化时恢复原 Run |
+| `interrupt` | 立即建立执行屏障，终止或收敛当前工作 |
+| `revise` | 中断旧 Run，生成 Contract 修订草案 |
+| `restart` | Human 确认新 Contract 和起点后创建新 Run |
+| `accept`、`reject` | 冻结 Human 验收结论；默认不自动合并 |
+
+只读意图直接执行。明确的暂停和中断意图直接建立执行屏障。需求、权限、网络、secret、交付方式或验收条件发生变化时，必须生成 Contract delta 并由 Human 确认后才能创建新 Run。如果意图不确定，先执行可逆的 pause，再用最少问题澄清。
+
+### 5.5 非阻塞观察
+
+Observer/Reporter 只读取 State Store、Event Store、Artifact Store 和 Git 状态。它与实现 Agent 使用不同 Session，不持有 Scheduler 排他锁，也没有工作区写权限。自然语言查询至少能够回答当前节点、已完成工作、变更文件、Verifier 状态、风险、预算、外部 handle 和未验证事项。
+
+连续查询必须满足同一个非干扰验收：除独立的查询审计事件和 Reporter 成本外，Run 的节点状态、路由、实现上下文、工作区和结果保持不变。
+
+### 5.6 中断、修订与重新开始
+
+Run 中断时不能修改原 Contract 或删除历史。Runtime 保存最后一致 checkpoint、当前 diff、正在执行的节点、外部 handle、已发生且无法撤销的副作用，并生成中断报告。
+
+方向变化通过新版本表达：
+
+```text
+Run A / Contract v1
+  → interrupted
+  → Contract v2 draft
+  → Human confirm
+  → Run B（parent_run_id=Run A，supersedes_run_id=Run A）
+```
+
+重新开始必须明确选择 `clean_base`、已接受 commit 或指定 checkpoint。对于不能取消或补偿的外部副作用，系统只能停止未来动作并在报告中明确披露，不能宣称已经回滚。
 
 ## 6. 总体架构
 
@@ -146,15 +218,24 @@ ge accept / ge reject
 └─────────────────────┬──────────────────────┘
                       ↓
 ┌────────────────────────────────────────────┐
-│ Discovery                                  │
-│ Conversation | Repo Inspect | Contract     │
-│ Verifier Generator | Risk Review           │
+│ Human Gateway                              │
+│ Control Conversation | Intent Compiler     │
+│ Observer / Reporter | Confirmation Policy  │
 └─────────────────────┬──────────────────────┘
-                      ↓ freeze
+          ┌───────────┴────────────┐
+          ↓                        ↓
+┌───────────────────────┐  ┌───────────────────────┐
+│ Discovery Graph       │  │ Runtime Control API   │
+│ Contract | Graph Draft│  │ Query | Pause         │
+│ Verifier | Risk Review│  │ Interrupt | Revise    │
+└───────────┬───────────┘  └───────────┬───────────┘
+            ↓ freeze                  ↓
+            └─────────────┬────────────┘
+                          ↓
 ┌────────────────────────────────────────────┐
 │ Graph Engineering Core                     │
-│ Compiler | Scheduler | State | Policy       │
-│ Context Builder | Artifact | Report         │
+│ Compiler | Scheduler | State | Event        │
+│ Policy | Context Builder | Artifact | Report│
 └───────────────┬─────────────────┬──────────┘
                 ↓                 ↓
 ┌────────────────────────┐  ┌──────────────────────┐
@@ -171,10 +252,14 @@ ge accept / ge reject
 
 | 模块 | 职责 |
 |---|---|
-| CLI | 用户命令、自然语言交互、状态和报告展示 |
+| Frontends | 提供自然语言项目对话、结构化确认、状态和报告展示 |
+| Human Gateway | 持久化 Human 消息，将自然语言编译为受限 Control Intent |
+| Observer / Reporter | 只读回答进度、风险和证据问题，不干扰执行 Session |
+| Confirmation Policy | 决定哪些意图直接执行，哪些必须由 Human 再确认 |
 | Discovery Engine | 需求澄清、代码库探索、缺失信息识别 |
 | Contract Compiler | 将对话编译为 Task Contract |
 | Graph Compiler | 根据 Contract、模板和策略生成 Execution Graph |
+| Control API | 校验并执行 query、pause、resume、interrupt、revise、restart、accept、reject |
 | Scheduler | 节点调度、路由、重试、超时和终止 |
 | State Store | 事务化保存 run、node、attempt、external handle |
 | Event Store | 追加式记录所有运行事件 |
@@ -183,7 +268,8 @@ ge accept / ge reject
 | Policy Engine | 权限、路径、命令、网络、secret 和预算控制 |
 | Executor Registry | Codex、Claude Code 等适配器注册表 |
 | Verifier Registry | 内置、声明式和自定义 Verifier 注册表 |
-| Delivery | 分支、commit、patch、Pull Request 和最终报告 |
+| Report Compiler | 从持久化状态和证据生成 Live Report 与所有终态的 Final Report |
+| Delivery | 分支、commit、patch、Pull Request 和 Human 验收记录 |
 
 ### 6.2 插件集成与部署形态
 
@@ -201,10 +287,11 @@ State Store / Executor / Verifier / Git worktree
 
 插件负责：
 
-- 暴露自然语言入口和项目命令。
+- 暴露持续存在的自然语言控制入口和结构化确认卡片。
 - 提供 Graph Engineering Skill 和使用说明。
 - 注册 `ge` MCP tools 或调用 `ge` CLI。
-- 展示 Contract 摘要、运行状态和验收报告。
+- 将 Human 消息提交给 Human Gateway，并展示其结构化解释和执行结果。
+- 展示 Contract 摘要、实时运行状态和验收报告。
 
 插件不负责：
 
@@ -216,7 +303,7 @@ State Store / Executor / Verifier / Git worktree
 建议的接入层级：
 
 1. MVP 先提供独立 `ge` CLI。
-2. 提供 `ge mcp-server`，向支持 MCP 的 Coding CLI 暴露 `start`、`answer`、`confirm`、`status`、`report` 等工具。
+2. 提供 `ge mcp-server`，向支持 MCP 的 Coding CLI 暴露 `start`、`message`、`confirm`、`status`、`report` 等工具；`message` 统一承载自然语言查询和控制意图。
 3. Codex Plugin 打包 Skill、命令和 MCP 配置，并检查本机 `ge` Runtime。
 4. Claude Code 使用相同 MCP 协议和 Runtime，只替换薄入口与 Executor Adapter。
 
@@ -307,7 +394,7 @@ plugin:
 
 核心协议、MCP tools 和 Executor Adapter 都需要版本字段。宿主 CLI 变化只应影响薄插件或 Adapter，不应使已有 run 的持久化状态失效。
 
-## 7. 两类 Graph
+## 7. 两类 Graph 与控制面
 
 ### 7.1 Discovery Graph
 
@@ -344,7 +431,7 @@ Discovery 输出：
 
 ### 7.2 Execution Graph
 
-Execution Graph 是自治的，禁止普通人工交互：
+Execution Graph 是自治的，禁止将普通 Human 消息注入执行 Agent Session：
 
 ```text
 inspect → design → implement → verify → review → deliver
@@ -354,6 +441,8 @@ inspect → design → implement → verify → review → deliver
 ```
 
 Graph 可以按项目拆分为更细的节点，例如数据库、后端、前端、单测、集成测试、压测和远程 CI。
+
+Human Control Plane 与两类 Graph 正交。它不成为普通执行节点，也不绕过 Graph Runtime：只读查询从持久化状态生成快照；暂停和中断通过 Control API 设置全局执行屏障；方向修订返回 Discovery Graph 生成新 Contract。这样 Human 保留观察权和控制权，同时不成为每个节点的实时调度器。
 
 ## 8. Task Contract
 
@@ -391,6 +480,22 @@ delivery:
   type: pull_request
   auto_merge: false
 
+human_control:
+  progress_queries: non_blocking
+  pause_allowed: true
+  interrupt_allowed: true
+  revision_requires_new_contract: true
+  final_acceptance_required: true
+
+reporting:
+  live_report: true
+  final_report_on:
+    - succeeded
+    - failed
+    - interrupted
+    - cancelled
+    - rejected
+
 policy:
   protected_paths: []
   allowed_network_hosts: []
@@ -411,6 +516,8 @@ Contract 编译时必须检查：
 - 是否定义代码交付方式。
 - 是否存在相互矛盾的要求。
 - 是否明确敏感权限和 secret 引用。
+- 是否定义 Human 的查询、中断、修订和最终验收边界。
+- 是否要求每个终态生成 Final Report。
 
 ## 9. Graph 模型
 
@@ -473,6 +580,25 @@ edges:
 - 远程任务返回的 run ID 必须先 checkpoint，再开始轮询。
 - Runtime 重启后不得无条件重复创建 PR、重复触发 CI 或重复发布。
 - 无法保证 exactly-once 的外部系统必须使用查询或补偿逻辑。
+
+### 9.5 Run 生命周期与控制屏障
+
+节点状态描述局部工作，Run 状态描述 Human 控制和整体终态：
+
+```text
+draft → awaiting_confirmation → running
+                                  ├→ pause_requested → quiescing → paused → running
+                                  ├→ interrupt_requested → quiescing → interrupted
+                                  ├→ delivery_ready → accepted / rejected
+                                  ├→ failed
+                                  ├→ cancelled
+                                  └→ budget_exhausted / authorization_blocked / infrastructure_failed
+
+interrupted / rejected → contract_revision → awaiting_confirmation → new run
+delivery_ready / accepted / rejected / failed / interrupted / cancelled → report_version_frozen
+```
+
+`pause_requested` 或 `interrupt_requested` 一旦持久化，Scheduler 必须拒绝启动新的节点、attempt 和外部副作用。Runtime 可以等待当前原子操作到达安全点，也可以根据 urgency 请求 Executor 终止。每个控制动作保存 Human 原始消息、结构化 Control Intent、状态校验结果和实际效果。
 
 ## 10. Executor 协议
 
@@ -843,8 +969,10 @@ acceptance_lock:
 │   └── <run-id>/
 │       ├── state.db
 │       ├── events.jsonl
+│       ├── control-messages.jsonl
 │       ├── handoffs/
 │       ├── artifacts/
+│       ├── reports/
 │       ├── prompts/
 │       └── responses/
 └── worktrees/
@@ -863,6 +991,10 @@ acceptance_lock:
 - `external_handles`
 - `artifacts`
 - `budgets`
+- `human_messages`
+- `control_intents`
+- `run_relationships`
+- `report_snapshots`
 
 原始大日志保存在 Artifact Store，SQLite 只保存元数据和引用。
 
@@ -876,6 +1008,8 @@ acceptance_lock:
 - 外部任务触发并获得 run ID 后。
 - 节点结果写入后、路由执行前。
 - 预算变化后。
+- `pause_requested` 或 `interrupt_requested` 写入时；执行屏障必须与状态变化在同一事务边界生效。
+- Human 确认 Contract 修订、重新开始起点或最终验收结论后。
 
 ### 14.4 恢复
 
@@ -891,9 +1025,19 @@ ge resume <run-id>
 4. 能查询则查询，不能确认副作用时停止并报告。
 5. 从最后一个已提交状态继续。
 
+### 14.5 非阻塞读取与一致性
+
+状态查询、Live Report 和 Observer/Reporter 使用只读连接或一致性快照，不获取 Scheduler 排他锁。查询审计事件与执行事件分流，不能触发节点路由。自然语言 Reporter 必须使用独立 Session 和只读 Context Package；其失败不能改变主 Run 状态。
+
+### 14.6 中断与 Run 继承
+
+中断后的旧 Run 保持不可变终态。修订后创建的新 Run 通过 `parent_run_id` 和 `supersedes_run_id` 关联旧 Run，并显式记录 `restart_from`：`clean_base`、`accepted_commit` 或 `checkpoint:<id>`。旧 worktree、diff、事件和报告作为证据保留，不允许被新 Run 覆盖。
+
 ## 15. 交付与最终验收
 
-运行结束生成：
+每个 Run 在任意执行终态都必须生成 Final Report；执行期间可以生成不冻结的 Live Report。Final Report 由 Runtime 根据 State Store、Event Store、Artifact Store、Git 和外部 handle 编译，不能依赖最后一个 Agent Session 是否仍然可用。Human 后续 accept/reject 时不覆盖旧报告，而是冻结包含验收结论的新报告版本或签名验收记录。
+
+最终交付至少生成：
 
 ```text
 summary.md
@@ -904,9 +1048,13 @@ review-report.md
 execution-trace.json
 cost-report.json
 pull-request.json
+control-history.json
+external-effects.json
 ```
 
 `requirement-matrix.md` 将每个验收条件映射到测试、CI、代码或人工检查证据。
+
+Final Report 必须包含 Run/Contract 版本关系、终态原因、节点与 attempt 时间线、代码变更、验证与审查证据、未完成和未验证事项、权限与外部副作用、成本、残留风险、复现方式以及恢复或修订建议。`interrupted`、`cancelled`、`failed` 等报告不能伪装成成功交付，但必须足以供 Human 决定继续、修订或终止。
 
 命令：
 
@@ -927,9 +1075,16 @@ ge plan <request-or-run>
 ge confirm <run-id>
 ge run <run-id>
 ge status <run-id>
+ge status <run-id> --watch
+ge message <project-or-run> <natural-language-message>
+ge pause <run-id>
 ge resume <run-id>
+ge interrupt <run-id>
+ge revise <run-id>
+ge restart <run-id> --from <clean-base|accepted-commit|checkpoint:id>
 ge cancel <run-id>
 ge report <run-id>
+ge report <run-id> --live
 ge accept <run-id>
 ge reject <run-id>
 
@@ -942,7 +1097,7 @@ ge verifier test <name>
 ge verifier dry-run <name>
 ```
 
-MVP 可将 `ge confirm` 和 `ge run` 分开，防止用户在查看摘要时误启动自治执行。
+这些命令是确定性 Runtime API 的 CLI 映射和调试入口。普通 Human 的主路径是通过 `ge start`、Plugin 或 UI 的自然语言 Control Conversation 使用相同能力，不要求记忆命令。MVP 将 `ge confirm` 和 `ge run` 分开，防止用户在查看摘要时误启动自治执行。
 
 ## 17. 建议技术栈
 
@@ -974,8 +1129,11 @@ MVP 可将 `ge confirm` 和 `ge run` 分开，防止用户在查看摘要时误�
 ### 18.1 单元测试
 
 - Contract 和 Graph schema。
+- HumanMessage、ControlIntent、RunRelationship 和 FinalReport schema。
 - 条件路由。
 - 状态转换。
+- 自然语言意图到受限控制动作的映射与确认策略。
+- pause、interrupt、resume、revise 和终态报告状态转换。
 - 重试和预算。
 - hash 冻结。
 - Context Builder 优先级和大小限制。
@@ -988,6 +1146,10 @@ MVP 可将 `ge confirm` 和 `ge run` 分开，防止用户在查看摘要时误�
 - Fake Executor 完成完整图。
 - Agent 失败后修复循环。
 - Runtime 中断后恢复。
+- 查询进度不会改变节点、路由、执行 Session 或工作区。
+- Human 中断会先建立执行屏障，不再启动新副作用。
+- Contract 修订创建新 Run，旧 Run 和证据保持不可变。
+- 每种终态即使 Executor 不可用也能生成 Final Report。
 - HTTP Pipeline trigger、poll 和 report。
 - 外部任务重复恢复不重复触发。
 - Contract 或 Verifier 被修改时拒绝运行。
@@ -1004,6 +1166,14 @@ MVP 使用结构化 JSONL 事件，至少包含：
 
 - `run.created`
 - `contract.frozen`
+- `human.message.received`
+- `control.intent.compiled`
+- `control.action.applied`
+- `run.pause_requested`
+- `run.paused`
+- `run.interrupt_requested`
+- `run.interrupted`
+- `run.revision_created`
 - `node.started`
 - `executor.session.started`
 - `command.finished`
@@ -1013,9 +1183,11 @@ MVP 使用结构化 JSONL 事件，至少包含：
 - `node.finished`
 - `route.selected`
 - `budget.updated`
+- `report.live.generated`
+- `report.final.frozen`
 - `run.finished`
 
-所有事件拥有 `run_id`、`node_id`、`attempt_id`、时间戳和相关 artifact 引用。后续可增加 OpenTelemetry adapter，但不作为 MVP 前置条件。
+所有执行事件拥有 `run_id`、适用时的 `node_id` 和 `attempt_id`、时间戳及相关 artifact 引用。Human 控制事件还必须包含 actor、原始消息引用、结构化意图、确认记录和动作结果。只读查询审计不能触发执行路由。后续可增加 OpenTelemetry adapter，但不作为 MVP 前置条件。
 
 ## 20. 分阶段实施计划
 
@@ -1026,7 +1198,7 @@ MVP 使用结构化 JSONL 事件，至少包含：
 范围：
 
 - 初始化 Python 项目结构和开发工具。
-- 建立 Contract、Graph、Executor Result、Verifier Result 的 Pydantic 模型。
+- 建立 Contract、Graph、Executor Result、Verifier Result、HumanMessage、ControlIntent、RunRelationship 和 FinalReport 的 Pydantic 模型。
 - 建立 JSON Schema 导出。
 - 编写 ADR、贡献指南和基础测试。
 
@@ -1036,6 +1208,7 @@ MVP 使用结构化 JSONL 事件，至少包含：
 
 - 所有 schema 有合法和非法 fixture。
 - `ge graph validate` 可以验证静态 Graph。
+- schema 可以表达非阻塞查询、暂停、中断、Contract 修订、Run 继承和所有终态报告，但 Phase 0 不执行这些行为。
 - 单元测试通过。
 - 生成 Phase 0 交接包。
 
@@ -1046,6 +1219,8 @@ MVP 使用结构化 JSONL 事件，至少包含：
 - SQLite State Store。
 - JSONL Event Store 和 Artifact Store。
 - 串行调度、条件边、重试、预算、终止。
+- 非阻塞状态快照、Live Report、Control API 和执行屏障。
+- pause、resume、interrupt、基础 Final Report 和 Run 继承。
 - Fake Executor、Fake Verifier。
 - checkpoint 和进程中断恢复。
 
@@ -1056,6 +1231,8 @@ MVP 使用结构化 JSONL 事件，至少包含：
 - Fake Executor 可以跑完实现、失败、修复、审查图。
 - 中断后恢复不会重复已完成节点。
 - 外部 handle 测试证明不会重复触发。
+- 反复查询不会改变节点、路由、Fake Executor 上下文或工作区 fixture。
+- 中断后不启动新副作用，并为 `interrupted`、`failed` 和 `cancelled` 生成 Final Report。
 - 状态机和事件测试通过。
 
 ### Phase 2：Codex Executor 与 Memory
@@ -1065,6 +1242,7 @@ MVP 使用结构化 JSONL 事件，至少包含：
 - Codex CLI preflight 和 capability 检测。
 - `codex exec --json --output-schema` Adapter。
 - Session start、resume、rotate 和 review。
+- Executor 安全终止和独立只读 Observer/Reporter Session。
 - 独立只读 Reviewer Agent、结构化 findings 和 review-fix 路由。
 - Context Builder、Repository Map 和 Handoff。
 - Git branch/worktree 隔离。
@@ -1081,17 +1259,21 @@ MVP 使用结构化 JSONL 事件，至少包含：
 - Reviewer 请求修改后由 Implementer 修复，相关 Verifier 重跑，再进入新的审查 attempt。
 - Runtime 重启后可从 checkpoint 恢复。
 - Contract 控制文件不能被实现 Agent 修改。
+- Human 查询由独立只读 Session 回答，不进入 Implementer Session；查询失败不影响主 Run。
+- Human 中断时 Codex Session 能被请求终止，无法立即终止时明确报告收敛状态。
 
 ### Phase 3：自然语言 Discovery 与 Contract 冻结
 
 范围：
 
-- `ge start` 交互式会话。
+- `ge start` 持续存在的 Human Control Conversation。
+- 自然语言查询、pause、resume、interrupt、revise、restart、accept 和 reject 意图编译。
 - 项目预扫描和未知项识别。
 - 多轮问答和 Contract 草案。
 - 测试、上下游、代码风格、权限和交付方式确认。
 - 风险摘要、确认界面和 acceptance lock。
 - 从 Contract 编译标准 Execution Graph。
+- Contract delta、Human 确认和新旧 Run 关系。
 
 验收：
 
@@ -1099,6 +1281,8 @@ MVP 使用结构化 JSONL 事件，至少包含：
 - 缺失测试方式时系统必须询问或明确建议。
 - 确认前不进入自治写代码阶段。
 - 确认后 Contract 修改会导致运行拒绝。
+- Human 可以自然语言查询进度且不会改变 Execution Graph 或执行 Agent Session。
+- 明确的自然语言暂停/中断会先建立执行屏障；方向修订创建新 Contract 和新 Run。
 
 ### Phase 4：动态 Verifier
 
@@ -1115,6 +1299,7 @@ MVP 使用结构化 JSONL 事件，至少包含：
 
 - 从自然语言生成一个异步 CI Verifier。
 - Runtime 能触发、checkpoint、轮询和收集报告。
+- 中断时能取消可取消的外部 handle，并报告不可取消或不可补偿的副作用。
 - Verifier 基础设施错误不进入业务代码修复。
 - 修改冻结 Verifier 后运行被拒绝。
 - 日志和 Agent prompt 不泄露 secret。
@@ -1127,12 +1312,14 @@ MVP 使用结构化 JSONL 事件，至少包含：
 - requirement matrix。
 - GitHub Actions 状态获取。
 - Pull Request 创建和更新。
-- 最终报告、accept 和 reject。
+- 所有终态的最终报告、自然语言 accept、reject 和 revise。
 
 验收：
 
 - 完整任务能够自动产生待验收 PR。
 - 每个验收条件都有证据或明确标记未验证。
+- `succeeded`、`failed`、`interrupted`、`cancelled` 和 `rejected` 都有可交付 Final Report。
+- 报告包含 Human 控制历史、Run 继承关系和残留外部副作用。
 - 默认不自动合并。
 - reject 会创建新 Contract 版本。
 
@@ -1145,6 +1332,7 @@ MVP 使用结构化 JSONL 事件，至少包含：
 - 并行节点、子图和 join。
 - 容器化 Verifier。
 - OpenTelemetry 和可选 UI。
+- 面向 Human Control Conversation 的项目页面、实时进度和结构化确认卡片。
 
 这些能力逐项实现，不要求在同一对话完成。
 
@@ -1165,7 +1353,7 @@ docs/
     └── CURRENT.md
 ```
 
-每个阶段结束必须更新 `docs/status/CURRENT.md`：
+每个阶段结束必须更新 `docs/status/CURRENT.md`。如果阶段改变了已实现架构、安装方式、公共命令、使用流程、限制或当前状态，也必须同步更新 `README.md`；README 只能将真实可用能力描述为已实现，未来能力必须明确标记为计划：
 
 ```markdown
 # Current Status
@@ -1213,6 +1401,7 @@ Phase 2：Codex Executor 与 Memory
 - 测试命令及结果。
 - 未解决问题和风险。
 - Git 状态和未提交变更说明。
+- README 与当前实现一致性的检查结果。
 - 下一阶段禁止破坏的行为。
 - 下一对话的启动提示词。
 
@@ -1222,14 +1411,16 @@ Phase 2：Codex Executor 与 Memory
 请继续实现 graph_engineering 的 Phase <N>。
 
 开始前必须阅读：
-1. DESIGN.md
-2. docs/status/CURRENT.md
-3. docs/phases/phase-<N>.md
-4. docs/adr/ 中被 CURRENT.md 引用的 ADR
+1. AGENTS.md
+2. DESIGN.md
+3. README.md
+4. docs/status/CURRENT.md
+5. docs/phases/phase-<N>.md
+6. docs/adr/ 中被 CURRENT.md 引用的 ADR
 
-先检查 git status 和现有测试，不要重做已完成阶段，也不要回退用户已有修改。
+先检查当前分支、git status 和现有测试，不要重做已完成阶段，也不要回退用户已有修改。实现阶段不得直接在 main 上开发；如尚未创建该阶段分支，先创建独立分支。
 本次只完成 Phase <N> 的范围和验收条件；不要提前实现后续阶段。
-完成后运行该阶段测试，并更新 docs/status/CURRENT.md 和阶段交接记录。
+完成后运行该阶段测试，并更新 README.md、docs/status/CURRENT.md 和阶段交接记录；README 中必须区分已实现能力与计划能力。
 ```
 
 ### 21.4 上下文不足时的提前交接
@@ -1257,6 +1448,8 @@ Phase 2：Codex Executor 与 Memory
 - ADR-006：Verifier 生成、权限和冻结。
 - ADR-007：Git worktree 隔离。
 - ADR-008：Memory 与 Context Builder。
+- ADR-009：Human Control Conversation、Control Intent 与非阻塞观察。
+- ADR-010：Run 中断、修订、继承与所有终态报告。
 
 ## 23. 风险与待验证假设
 
@@ -1271,6 +1464,10 @@ Phase 2：Codex Executor 与 Memory
 | 长任务成本失控 | 节点、attempt、时间和调用预算 |
 | Python 分发体验不足 | 首版 uvx/pipx，稳定后提供独立二进制或评估 Go 重写 |
 | 多平台 shell 差异 | 命令 argv 优先、平台适配和 Windows/Linux CI |
+| 自然语言控制意图被误判 | 受限意图枚举、置信度、可逆 pause 优先、风险操作确认和完整审计 |
+| Human 查询污染实现上下文 | 独立只读 Observer/Reporter Session 和非干扰集成测试 |
+| 中断时仍有外部副作用运行 | 先持久化执行屏障、external handle 取消/查询、补偿策略和报告披露 |
+| Agent 退出后无法生成报告 | Runtime 根据持久化状态、事件和 artifact 确定性编译报告 |
 
 需要通过原型验证的假设：
 
@@ -1293,22 +1490,33 @@ Phase 2：Codex Executor 与 Memory
 7. 长任务跨多个 Codex Session，通过结构化 Handoff 延续。
 8. Runtime 中断后能够恢复，不重复关键外部副作用。
 9. 独立 Review 节点可以要求修复并重新验证。
-10. 最终报告包含需求、代码、测试、CI 和审查证据。
-11. 人可以接受或拒绝成果，系统默认不自动合并。
+10. Human 可以通过持续存在的自然语言控制面对当前 Run 查询进度、风险和证据，查询不会进入实现 Agent Session 或改变执行图。
+11. Human 可以通过自然语言暂停或中断；系统先阻止新副作用，再安全收敛当前工作。
+12. 方向修订创建新 Contract 版本和新 Run，旧 Run、diff、事件和证据保持不可变。
+13. `succeeded`、`failed`、`interrupted`、`cancelled` 和 `rejected` 等所有终态都生成 Final Report。
+14. Final Report 包含需求、代码、测试、CI、审查证据、Human 控制历史、成本、未验证项和残留副作用。
+15. Human 可以自然语言接受、拒绝或修订成果，系统默认不自动合并。
 
 ## 25. Review 清单
 
-Review 本文档时建议逐项确认：
+Phase 0 启动基线：
 
-- [ ] 项目定位是否准确。
-- [ ] 独立 Runtime 与 Plugin 的边界是否合理。
-- [ ] Discovery 和 Execution 的人机边界是否符合预期。
-- [ ] Contract 是否覆盖需要确认的信息。
-- [ ] 动态 Verifier 的生成和冻结机制是否可接受。
-- [ ] Codex Session 与外部 Memory 的设计是否足够可靠。
-- [ ] 权限、secret、网络和工作区隔离是否满足目标用户。
-- [ ] MVP 技术栈是否选择 Python，还是改为 Go/Rust/TypeScript。
-- [ ] 分阶段顺序和每阶段验收条件是否合理。
-- [ ] GitHub PR 是否必须进入 MVP。
-- [ ] MVP 是否需要支持 Windows、Linux 和 macOS。
-- [ ] 是否需要在首版支持容器级隔离。
+- [x] 项目定位为平台无关的自治开发控制层。
+- [x] 独立 Runtime 与薄 Plugin/CLI/UI 入口。
+- [x] Discovery、Execution 和 Human Control Plane 的边界。
+- [x] Human 在确认边界内尽量少参与，但保留观察、中断、修订和最终验收权。
+- [x] 自然语言编译为受限 Control Intent，不能直接操作 Runtime。
+- [x] 查询与执行 Agent Session 隔离，不能打断或污染开发。
+- [x] 所有终态强制生成可交付 Final Report。
+- [x] Contract、Verifier 和历史证据冻结，修订通过新版本和新 Run 表达。
+- [x] Phase 0/MVP 使用 Python 3.12、SQLite、Pydantic、Typer、asyncio 和 pytest。
+- [x] MVP 采用单机、单任务、串行图，按 Phase 0–5 逐阶段验收。
+- [x] GitHub PR 保留在 MVP，默认不自动合并。
+
+后续阶段仍需通过 ADR 或阶段 Review 明确：
+
+- [ ] Contract、Control Intent、Report 等 schema 的最终字段和版本迁移策略（Phase 0）。
+- [ ] Codex Session 终止能力和外部 Memory 的真实可靠性（Phase 2 原型验证）。
+- [ ] 动态 Verifier 的代码生成、权限和冻结细节（Phase 4）。
+- [ ] Windows、Linux 和 macOS 的首个正式发布支持矩阵。
+- [ ] 容器级隔离是否进入首个正式版本；当前不阻塞 MVP。

@@ -1,0 +1,306 @@
+{
+  "$defs": {
+    "Budget": {
+      "additionalProperties": false,
+      "properties": {
+        "max_cost_units": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Cost Units"
+        },
+        "max_duration_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Max Duration Seconds",
+          "type": "integer"
+        },
+        "max_executor_calls": {
+          "exclusiveMinimum": 0,
+          "title": "Max Executor Calls",
+          "type": "integer"
+        },
+        "max_repair_iterations": {
+          "minimum": 0,
+          "title": "Max Repair Iterations",
+          "type": "integer"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "max_duration_seconds",
+        "max_executor_calls",
+        "max_repair_iterations"
+      ],
+      "title": "Budget",
+      "type": "object"
+    },
+    "ContractRef": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_id": {
+          "minLength": 1,
+          "title": "Contract Id",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "contract_id",
+        "revision"
+      ],
+      "title": "ContractRef",
+      "type": "object"
+    },
+    "Edge": {
+      "additionalProperties": false,
+      "properties": {
+        "condition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RouteCondition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "from_node": {
+          "minLength": 1,
+          "title": "From Node",
+          "type": "string"
+        },
+        "max_iterations": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Iterations"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "to_node": {
+          "minLength": 1,
+          "title": "To Node",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "from_node",
+        "to_node"
+      ],
+      "title": "Edge",
+      "type": "object"
+    },
+    "Node": {
+      "additionalProperties": false,
+      "properties": {
+        "budget": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Budget"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "config": {
+          "additionalProperties": true,
+          "title": "Config",
+          "type": "object"
+        },
+        "node_id": {
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Node Id",
+          "type": "string"
+        },
+        "node_type": {
+          "$ref": "#/$defs/NodeType"
+        },
+        "objective": {
+          "minLength": 1,
+          "title": "Objective",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "node_id",
+        "node_type",
+        "objective"
+      ],
+      "title": "Node",
+      "type": "object"
+    },
+    "NodeType": {
+      "enum": [
+        "agent",
+        "command",
+        "verifier",
+        "router",
+        "delivery"
+      ],
+      "title": "NodeType",
+      "type": "string"
+    },
+    "RouteCondition": {
+      "additionalProperties": false,
+      "description": "Restricted comparison; it is data, never executable source code.",
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/RouteField"
+        },
+        "operator": {
+          "$ref": "#/$defs/RouteOperator"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": [
+        "schema_version",
+        "field",
+        "operator",
+        "value"
+      ],
+      "title": "RouteCondition",
+      "type": "object"
+    },
+    "RouteField": {
+      "enum": [
+        "result.status",
+        "result.retryable",
+        "attempt.number"
+      ],
+      "title": "RouteField",
+      "type": "string"
+    },
+    "RouteOperator": {
+      "enum": [
+        "equals",
+        "not_equals",
+        "in",
+        "not_in"
+      ],
+      "title": "RouteOperator",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "contract": {
+      "$ref": "#/$defs/ContractRef"
+    },
+    "edges": {
+      "items": {
+        "$ref": "#/$defs/Edge"
+      },
+      "title": "Edges",
+      "type": "array"
+    },
+    "entry_node_id": {
+      "minLength": 1,
+      "title": "Entry Node Id",
+      "type": "string"
+    },
+    "graph_id": {
+      "minLength": 1,
+      "title": "Graph Id",
+      "type": "string"
+    },
+    "nodes": {
+      "items": {
+        "$ref": "#/$defs/Node"
+      },
+      "minItems": 1,
+      "title": "Nodes",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "graph_id",
+    "contract",
+    "entry_node_id",
+    "nodes"
+  ],
+  "title": "ExecutionGraph",
+  "type": "object"
+}

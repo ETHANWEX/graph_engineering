@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "intent_kind": "query",
+  "intent_id": "intent-1",
+  "source_message_id": "message-1",
+  "actor_id": "human-1",
+  "project_id": "project-1",
+  "run_id": "run-1",
+  "action": "query_progress",
+  "reason": {
+    "schema_version": "1.0",
+    "code": "human_request",
+    "detail": "Periodic progress check"
+  },
+  "confidence": 0.98,
+  "requires_confirmation": false
+}

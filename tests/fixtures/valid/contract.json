@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0",
+  "contract_id": "contract-orders",
+  "revision": 1,
+  "status": "frozen",
+  "task": {
+    "schema_version": "1.0",
+    "task_id": "batch-cancel",
+    "title": "Batch cancel orders",
+    "description": "Add a bounded batch cancellation operation."
+  },
+  "acceptance_criteria": [
+    {
+      "schema_version": "1.0",
+      "criterion_id": "partial-success",
+      "description": "Valid orders can succeed when another order fails.",
+      "verifier_refs": ["unit-tests"]
+    }
+  ],
+  "constraints": ["Maximum batch size is 100"],
+  "verifiers": [
+    {
+      "schema_version": "1.0",
+      "verifier_id": "unit-tests",
+      "verifier_type": "builtin/command",
+      "timeout_seconds": 300,
+      "required": true
+    }
+  ],
+  "policy": {
+    "schema_version": "1.0",
+    "protected_paths": ["tests/acceptance"],
+    "allowed_network_hosts": [],
+    "allowed_secret_refs": []
+  },
+  "delivery": {
+    "schema_version": "1.0",
+    "delivery_type": "patch",
+    "auto_merge": false
+  },
+  "human_control": {
+    "schema_version": "1.0",
+    "non_blocking_queries": true,
+    "pause_allowed": true,
+    "interrupt_allowed": true,
+    "revision_creates_new_contract": true,
+    "final_acceptance_required": true
+  },
+  "budget": {
+    "schema_version": "1.0",
+    "max_duration_seconds": 7200,
+    "max_executor_calls": 30,
+    "max_repair_iterations": 5
+  }
+}

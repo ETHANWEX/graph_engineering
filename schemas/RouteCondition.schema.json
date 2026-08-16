@@ -1,0 +1,76 @@
+{
+  "$defs": {
+    "RouteField": {
+      "enum": [
+        "result.status",
+        "result.retryable",
+        "attempt.number"
+      ],
+      "title": "RouteField",
+      "type": "string"
+    },
+    "RouteOperator": {
+      "enum": [
+        "equals",
+        "not_equals",
+        "in",
+        "not_in"
+      ],
+      "title": "RouteOperator",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Restricted comparison; it is data, never executable source code.",
+  "properties": {
+    "field": {
+      "$ref": "#/$defs/RouteField"
+    },
+    "operator": {
+      "$ref": "#/$defs/RouteOperator"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "value": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "type": "array"
+        }
+      ],
+      "title": "Value"
+    }
+  },
+  "required": [
+    "schema_version",
+    "field",
+    "operator",
+    "value"
+  ],
+  "title": "RouteCondition",
+  "type": "object"
+}

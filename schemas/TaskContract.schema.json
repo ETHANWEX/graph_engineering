@@ -1,0 +1,389 @@
+{
+  "$defs": {
+    "AcceptanceCriterion": {
+      "additionalProperties": false,
+      "properties": {
+        "criterion_id": {
+          "minLength": 1,
+          "title": "Criterion Id",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "verifier_refs": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Verifier Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema_version",
+        "criterion_id",
+        "description",
+        "verifier_refs"
+      ],
+      "title": "AcceptanceCriterion",
+      "type": "object"
+    },
+    "Budget": {
+      "additionalProperties": false,
+      "properties": {
+        "max_cost_units": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Cost Units"
+        },
+        "max_duration_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Max Duration Seconds",
+          "type": "integer"
+        },
+        "max_executor_calls": {
+          "exclusiveMinimum": 0,
+          "title": "Max Executor Calls",
+          "type": "integer"
+        },
+        "max_repair_iterations": {
+          "minimum": 0,
+          "title": "Max Repair Iterations",
+          "type": "integer"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "max_duration_seconds",
+        "max_executor_calls",
+        "max_repair_iterations"
+      ],
+      "title": "Budget",
+      "type": "object"
+    },
+    "ContractPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_network_hosts": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowed Network Hosts",
+          "type": "array"
+        },
+        "allowed_secret_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowed Secret Refs",
+          "type": "array"
+        },
+        "protected_paths": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Protected Paths",
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version"
+      ],
+      "title": "ContractPolicy",
+      "type": "object"
+    },
+    "ContractRef": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_id": {
+          "minLength": 1,
+          "title": "Contract Id",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "contract_id",
+        "revision"
+      ],
+      "title": "ContractRef",
+      "type": "object"
+    },
+    "ContractStatus": {
+      "enum": [
+        "draft",
+        "frozen"
+      ],
+      "title": "ContractStatus",
+      "type": "string"
+    },
+    "DeliveryPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "auto_merge": {
+          "const": false,
+          "default": false,
+          "title": "Auto Merge",
+          "type": "boolean"
+        },
+        "delivery_type": {
+          "$ref": "#/$defs/DeliveryType"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "delivery_type"
+      ],
+      "title": "DeliveryPolicy",
+      "type": "object"
+    },
+    "DeliveryType": {
+      "enum": [
+        "patch",
+        "commit",
+        "pull_request",
+        "report_only"
+      ],
+      "title": "DeliveryType",
+      "type": "string"
+    },
+    "HumanControlPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "final_acceptance_required": {
+          "title": "Final Acceptance Required",
+          "type": "boolean"
+        },
+        "interrupt_allowed": {
+          "title": "Interrupt Allowed",
+          "type": "boolean"
+        },
+        "non_blocking_queries": {
+          "title": "Non Blocking Queries",
+          "type": "boolean"
+        },
+        "pause_allowed": {
+          "title": "Pause Allowed",
+          "type": "boolean"
+        },
+        "revision_creates_new_contract": {
+          "const": true,
+          "default": true,
+          "title": "Revision Creates New Contract",
+          "type": "boolean"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "non_blocking_queries",
+        "pause_allowed",
+        "interrupt_allowed",
+        "final_acceptance_required"
+      ],
+      "title": "HumanControlPolicy",
+      "type": "object"
+    },
+    "TaskDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "task_id": {
+          "minLength": 1,
+          "title": "Task Id",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "task_id",
+        "title",
+        "description"
+      ],
+      "title": "TaskDefinition",
+      "type": "object"
+    },
+    "VerifierRequirement": {
+      "additionalProperties": false,
+      "properties": {
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Timeout Seconds",
+          "type": "integer"
+        },
+        "verifier_id": {
+          "minLength": 1,
+          "title": "Verifier Id",
+          "type": "string"
+        },
+        "verifier_type": {
+          "minLength": 1,
+          "title": "Verifier Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "verifier_id",
+        "verifier_type",
+        "timeout_seconds"
+      ],
+      "title": "VerifierRequirement",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "acceptance_criteria": {
+      "items": {
+        "$ref": "#/$defs/AcceptanceCriterion"
+      },
+      "minItems": 1,
+      "title": "Acceptance Criteria",
+      "type": "array"
+    },
+    "budget": {
+      "$ref": "#/$defs/Budget"
+    },
+    "constraints": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Constraints",
+      "type": "array"
+    },
+    "contract_id": {
+      "minLength": 1,
+      "title": "Contract Id",
+      "type": "string"
+    },
+    "delivery": {
+      "$ref": "#/$defs/DeliveryPolicy"
+    },
+    "human_control": {
+      "$ref": "#/$defs/HumanControlPolicy"
+    },
+    "policy": {
+      "$ref": "#/$defs/ContractPolicy"
+    },
+    "revision": {
+      "minimum": 1,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/ContractStatus"
+    },
+    "supersedes": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ContractRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "task": {
+      "$ref": "#/$defs/TaskDefinition"
+    },
+    "verifiers": {
+      "items": {
+        "$ref": "#/$defs/VerifierRequirement"
+      },
+      "minItems": 1,
+      "title": "Verifiers",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "contract_id",
+    "revision",
+    "status",
+    "task",
+    "acceptance_criteria",
+    "verifiers",
+    "policy",
+    "delivery",
+    "human_control",
+    "budget"
+  ],
+  "title": "TaskContract",
+  "type": "object"
+}
