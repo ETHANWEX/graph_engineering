@@ -15,4 +15,3 @@ edges:
     from_node: implement
     to_node: missing
     condition: "__import__('os').system('whoami')"
-

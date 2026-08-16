@@ -19,4 +19,3 @@ provider session identifiers, if needed, remain adapter metadata rather than pro
 
 The public schemas are language- and provider-neutral. Adapter capability discovery and actual
 executor invocation remain deferred to Phase 2.
-

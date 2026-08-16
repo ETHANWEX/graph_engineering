@@ -26,4 +26,3 @@ to a clean base, accepted commit, or named checkpoint.
 Breaking protocol changes require a new schema version and migration ADR. Contract changes append
 history rather than modifying old documents. The committed schemas and fixtures detect accidental
 wire-format changes.
-

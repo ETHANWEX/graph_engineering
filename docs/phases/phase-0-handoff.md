@@ -6,7 +6,7 @@
 - 阶段：Phase 0（仓库与协议基础），验收项全部完成。
 - 分支：`phase/0-foundation`；没有自动合并到 `main`。
 - 基线提交：`c978ceb`。
-- Phase 0 实现提交：在最终验证后创建并记录于本文末尾的工作区状态。
+- Phase 0 实现提交：`c1a56b2`。
 
 Phase 0 仅交付协议、Schema、fixtures、静态 Graph 校验、工程工具和文档。没有 Runtime、
 节点执行、模型调用、Human Gateway 运行逻辑、SQLite、daemon、HTTP、GitHub 或插件入口。
@@ -99,6 +99,6 @@ README.md、docs/status/CURRENT.md、docs/phases/phase-0-handoff.md 和其中引
 
 - 当前分支：`phase/0-foundation`。
 - 最近基线提交：`c978ceb`。
-- 最终 Phase 0 提交：待最终验证后填写。
-- 交接文件写入时的未提交修改：Phase 0 实现、用户原有设计对齐文档及本交接更新；将在
-  阶段提交中一并记录。
+- Phase 0 实现提交：`c1a56b2`。
+- 最终交接元数据提交：本文之后的 `docs: finalize phase 0 handoff`（以分支 `HEAD` 为准）。
+- 最终未提交修改：无。

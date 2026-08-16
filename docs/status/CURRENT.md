@@ -86,7 +86,7 @@ SQLite 状态、JSONL 事件及其事务边界仍是 Phase 1 的决策，不在 
 
 - 分支：`phase/0-foundation`。
 - 基线提交：`c978ceb`（`main`/`origin/main`）。
-- Phase 0 实现提交：完成验证后记录在交接包；该分支不得自动合并。
+- Phase 0 实现提交：`c1a56b2`；该分支不得自动合并。
 - 开始时用户已有的 `DESIGN.md`、`README.md` 和新增 Phase 文档修改均已保留并纳入
   Phase 0 对齐，没有回退或重新生成。
 

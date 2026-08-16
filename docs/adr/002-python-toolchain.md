@@ -19,4 +19,3 @@ Schema draft 2020-12 documents from Pydantic models.
 Development requires Python. The wire formats remain JSON/YAML and do not depend on Python object
 serialization. SQLite, asyncio, HTTP, executors, and runtime behavior are intentionally not added in
 Phase 0.
-
