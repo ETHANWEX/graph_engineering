@@ -62,10 +62,22 @@ class StateStore:
                     "INSERT INTO schema_migrations(version, applied_at) VALUES (2, ?)",
                     (timestamp(),),
                 )
+            if 3 not in applied:
+                connection.executescript(_MIGRATION_3)
+                connection.execute(
+                    "INSERT INTO schema_migrations(version, applied_at) VALUES (3, ?)",
+                    (timestamp(),),
+                )
             connection.commit()
 
     @property
     def schema_version(self) -> int:
+        """Legacy Phase 1 compatibility level; use latest_migration_version for storage."""
+
+        return min(self.latest_migration_version, 2)
+
+    @property
+    def latest_migration_version(self) -> int:
         with self.read_connection() as connection:
             row = connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()
             return int(row[0]) if row is not None and row[0] is not None else 0
@@ -287,5 +299,64 @@ CREATE TABLE run_artifacts (
     role TEXT NOT NULL,
     inherited_from_run_id TEXT,
     PRIMARY KEY(run_id, artifact_id, node_id, role)
+);
+"""
+
+_MIGRATION_3 = """
+CREATE TABLE executor_sessions (
+    session_id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL,
+    node_id TEXT NOT NULL,
+    attempt_id TEXT NOT NULL,
+    role TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    provider_session_id TEXT NOT NULL,
+    provider_version TEXT NOT NULL,
+    status TEXT NOT NULL,
+    continuation_count INTEGER NOT NULL DEFAULT 0,
+    failure_count INTEGER NOT NULL DEFAULT 0,
+    process_id INTEGER,
+    raw_stdout_artifact_id TEXT,
+    raw_stderr_artifact_id TEXT,
+    outcome_json TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(provider, provider_session_id, attempt_id)
+);
+CREATE INDEX executor_sessions_run_node ON executor_sessions(run_id, node_id, created_at);
+
+CREATE TABLE supervised_processes (
+    process_handle_id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL,
+    session_id TEXT REFERENCES executor_sessions(session_id),
+    process_id INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    started_at TEXT NOT NULL,
+    settled_at TEXT
+);
+
+CREATE TABLE review_attempts (
+    review_attempt_id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL,
+    session_id TEXT NOT NULL REFERENCES executor_sessions(session_id),
+    attempt_number INTEGER NOT NULL,
+    verdict TEXT,
+    result_artifact_id TEXT,
+    created_at TEXT NOT NULL,
+    UNIQUE(run_id, attempt_number)
+);
+
+CREATE TABLE verifier_executions (
+    verifier_execution_id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL,
+    node_id TEXT NOT NULL,
+    attempt_id TEXT NOT NULL,
+    argv_json TEXT NOT NULL,
+    status TEXT NOT NULL,
+    process_id INTEGER,
+    stdout_artifact_id TEXT,
+    stderr_artifact_id TEXT,
+    started_at TEXT NOT NULL,
+    finished_at TEXT
 );
 """
