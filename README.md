@@ -2,17 +2,26 @@
 
 Graph Engineering 是一个面向自治软件开发的图工程控制层。Human 通过自然语言定义需求和授权边界、随时查询或中断开发，并最终验收成果；Graph Runtime 在冻结的 Contract 内组织 Coding Agent、确定性工具、Verifier、反馈循环和外部系统，持续完成实现、验证、修复、审查与证据交付。
 
-> 当前状态：Phase 0（仓库与协议基础）已经实现并通过验收。现在可安装的是协议模型、JSON Schema 导出和静态 Graph 校验工具，不是可执行自治任务的 Runtime。架构图和“计划中的使用方式”描述的是后续阶段目标。
+> 当前状态：Phase 1（持久化 Graph Runtime）已经实现并通过本阶段验证。现在可安装的是公共协议、静态 Graph 校验，以及使用 Fake Executor/Verifier 的单机串行 Runtime；真实 Coding CLI、自然语言控制面和后台 daemon 尚未实现。
 
 ## 已实现能力
 
-Phase 0 当前提供：
+Phase 0–1 当前提供：
 
 - Python 3.12+、Pydantic v2 和 Typer 的可安装 `src` layout 包。
 - 版本化 Task Contract、Execution Graph、Result、Control、Run 关系和 Report 协议。
 - 30 个提交到 `schemas/` 的公共 JSON Schema，以及稳定性测试。
 - JSON/YAML Execution Graph 静态校验；错误包含字段路径并返回非零退出码。
 - 合法/非法 fixtures、36 个单元测试、mypy 严格类型检查和 Ruff 检查。
+- SQLite State Store（含迁移、事务状态机、checkpoint 和事件 outbox）。
+- 追加式 JSONL Event Store 与内容寻址 Artifact Store。
+- 单机、单任务、串行 Graph Runtime：受限条件边、修复循环、重试上限、Run/Node
+  调用/时间/修复/成本预算和终止。
+- Fake Executor/Fake Verifier，以及 checkpointed external handle 的恢复和防重复触发。
+- 强类型 Python Control API、pause/resume/interrupt 执行屏障、只读快照与 LiveReport。
+- RunRelationship/RestartFrom 校验、同图 checkpoint 状态继承和来源 Run 不可变性。
+- Artifact metadata/角色关联，以及聚合 changed files 和验证证据的基础 FinalReport。
+- 62 个 pytest 测试（Phase 0 的 36 个与 Phase 1 的 26 个）。
 
 开发安装：
 
@@ -21,7 +30,7 @@ python -m venv .venv
 .venv\Scripts\python -m pip install -e ".[dev]"
 ```
 
-当前真实可用的命令只有：
+当前 CLI 命令仍为：
 
 ```powershell
 ge graph validate tests/fixtures/valid/graph.yaml
@@ -29,6 +38,26 @@ ge schema export --output schemas
 ```
 
 `graph validate` 只检查结构、节点引用和受限路由条件，不执行节点。开发和贡献命令见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+Phase 1 Runtime 通过强类型 Python API 使用；它只接受已验证的 `ExecutionGraph`、`Budget`、
+`QueryControlIntent`/`StateChangeControlIntent` 和 Fake 执行边界：
+
+```python
+from pathlib import Path
+
+from graph_engineering.runtime import FakeExecutor, FakeVerifier, GraphRuntime
+
+runtime = GraphRuntime(
+    Path(".ge/runs/run-1"),
+    executor=FakeExecutor({...}),
+    verifier=FakeVerifier({...}),
+)
+runtime.create_run("run-1", "project-1", graph, contract_hash, budget)
+terminal_status = runtime.run("run-1")
+report = runtime.final_report("run-1")
+```
+
+该 API 是 Phase 1 的确定性内核入口，不会调用真实模型、Shell、HTTP 或 Coding CLI。
 
 ## 为什么需要 Graph Engineering
 
@@ -168,13 +197,15 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 
 ## 当前开发状态
 
-- 已完成阶段：Phase 0；等待 Human 审阅和批准，尚未合并到 `main`。
-- 已实现边界：协议、Schema、fixtures、静态 Graph 校验和工程检查。
-- 尚未实现：Runtime、持久化、节点执行、Executor/Verifier 调用、自然语言 Human Gateway、暂停/中断/恢复行为、daemon、HTTP、GitHub、Plugin/MCP/UI。
+- 已完成阶段：Phase 0；Phase 1 已在 `phase/1-runtime` 实现并通过本阶段验证，等待 Human 审阅。
+- 已实现边界：协议、Schema、静态 Graph 校验、SQLite/JSONL/Artifact 持久化、串行 Fake Runtime、控制屏障、恢复和基础报告。
+- 尚未实现：真实 Executor/Verifier Adapter、Codex、Context Builder、Git worktree、自然语言 Human Gateway、daemon、HTTP、GitHub、Plugin/MCP/UI。
 - 当前设计：[DESIGN.md](DESIGN.md)
 - 跨对话状态：[docs/status/CURRENT.md](docs/status/CURRENT.md)
 - Phase 0 范围：[docs/phases/phase-0.md](docs/phases/phase-0.md)
 - Phase 0 交接：[docs/phases/phase-0-handoff.md](docs/phases/phase-0-handoff.md)
+- Phase 1 范围：[docs/phases/phase-1.md](docs/phases/phase-1.md)
+- Phase 1 交接：[docs/phases/phase-1-handoff.md](docs/phases/phase-1-handoff.md)
 - 协作约定：[AGENTS.md](AGENTS.md)
 
 README 是项目对外的首要入口。每个阶段完成时都必须同步更新这里的架构、已实现能力、安装方式、示例命令和限制，避免 README 描述超前于代码。

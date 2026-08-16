@@ -1,0 +1,12 @@
+{
+  "executor": {
+    "schema_version": "1.0",
+    "status": "succeeded",
+    "summary": "fixture implementation completed"
+  },
+  "verifier": {
+    "schema_version": "1.0",
+    "status": "passed",
+    "summary": "fixture verification passed"
+  }
+}

@@ -2,96 +2,103 @@
 
 ## 当前阶段
 
-Phase 0：仓库与协议基础已完成并通过本阶段验证，等待 Human 审阅；未合并到 `main`。
+Phase 1：持久化 Graph Runtime 已在 `phase/1-runtime` 实现并通过本阶段验证，等待 Human
+审阅；未提交、未推送、未创建 PR，也未合并到 `main`。
 
 ## 已完成
 
-- 建立 Python 3.12+、`src` layout 和 `pyproject.toml` 可安装包。
-- 建立 Typer CLI 骨架与 `ge graph validate`、`ge schema export`。
-- 实现平台无关的 Task Contract、Execution Graph/Node/Edge、Executor/Verifier Result、
-  Artifact、Budget、Error、HumanMessage、ControlIntent、ControlActionResult、RunRelationship、
-  RestartFrom、LiveReport 和 FinalReport。
-- 所有公共协议使用显式 `schema_version: "1.0"`；模型拒绝未知字段并支持确定性
-  canonical JSON/SHA-256。
-- Contract revision 以旧版本引用追加，查询/状态变更 ControlIntent 在类型上分离。
-- 路由条件使用受限字段、操作符和值，不接受 Python 或 Shell 表达式。
-- `failed` 与 `error` 的字段要求和终态原因已通过模型校验区分。
-- 导出并提交 30 个 JSON Schema；Contract、Graph、Result、Control、Report 均有合法与
-  非法 fixtures。
-- 建立 pytest、mypy strict、Ruff lint/format 和 Schema 漂移检查。
-- README 已明确区分 Phase 0 已实现能力与 Phase 1–6 计划能力。
+- 保持 Phase 0 的公共 Schema 1.0 与 30 个提交 Schema 完全不变。
+- 实现 SQLite State Store、单调迁移、外键/WAL、显式 writer 事务与只读快照。
+- 状态事务同步写入 event outbox；JSONL Event Store 使用稳定 event ID 幂等 flush、fsync。
+- 实现内容寻址、原子落盘、不可覆盖的最小 Artifact Store。
+- 实现单机、单任务、串行 Runtime，覆盖 node/attempt/edge/run/budget 的确定性状态变化。
+- 实现受限条件边、修复循环、边遍历上限、executor-call/repair budget 与终止语义。
+- Run 和 Node 均执行调用次数、持续时间、修复次数预算；显式 cost charge 同时更新并执行
+  Run/Node cost budget。
+- 实现 checkpoint、Contract/Graph hash 校验、已完成节点恢复去重。
+- 实现 Fake Executor/Fake Verifier；外部 handle 先记录 trigger intent，再 checkpoint handle，
+  恢复时只查询不重触发；无法确认时停止并在报告中披露。
+- 实现强类型 Control API、pause/resume/interrupt 屏障、取消、只读 snapshot 与 LiveReport。
+- 屏障持久化后 Scheduler 不启动新的 node、attempt 或外部 trigger。
+- 校验 `RunRelationship` 引用存在性和 checkpoint 所有权/hash；同图 checkpoint restart
+  继承 node/result/route/Artifact link、重置新 Run budget，且不修改来源 Run。
+- Artifact Store 已接通 SQLite metadata、role-scoped Run link、审计事件和 Result checkpoint；
+  基础 FinalReport 聚合 changed files 与 Verifier evidence。
+- 为 `succeeded`、`failed`、`error`、`interrupted`、`cancelled` 生成基础 FinalReport。
+- 新增 26 个 Phase 1 测试和串行 Graph/Fake result fixtures；合计 62 个 pytest 测试。
 
 ## 未完成
 
-- 未实现 SQLite/JSONL Runtime、Scheduler、Event/Artifact Store 或 Graph 节点执行。
-- 未实现真实 Codex/其他 Executor 调用、自然语言模型调用或 Human Gateway 运行逻辑。
-- 未实现 pause/interrupt/resume 行为、动态 Verifier、HTTP Pipeline、daemon、GitHub PR、
-  Plugin、MCP 产品入口或 UI。
-- 不得在 Phase 0 分支提前开始 Phase 1–6。
+- 不包含真实 Codex、Claude Code 或其他 Executor Adapter。
+- 不包含 Context Builder、Session、独立 Reviewer/Observer Agent、Git branch/worktree 隔离。
+- 不包含自然语言模型、意图识别、Human Gateway 产品逻辑或持续对话。
+- 不包含动态 Verifier、Command/HTTP Pipeline、网络、secret、远程 CI。
+- 不包含 daemon、GitHub PR、Plugin、MCP 产品入口、UI、并行图或 Phase 2–6 能力。
 
 ## 关键决策
 
-- [ADR-001](../adr/001-independent-core.md)：核心是独立、provider-neutral 控制层。
-- [ADR-002](../adr/002-python-toolchain.md)：Python 3.12+、Pydantic v2、Typer、pytest、
-  mypy strict 和 Ruff。
-- [ADR-003](../adr/003-protocol-versioning-and-revisions.md)：公共协议显式版本、确定性
-  序列化、Contract append-only revision 和 Run 继承关系。
-- [ADR-004](../adr/004-control-routing-and-terminal-semantics.md)：强类型 ControlIntent、
-  受限路由、failed/error 与所有终态报告语义。
-
-SQLite 状态、JSONL 事件及其事务边界仍是 Phase 1 的决策，不在 Phase 0 中实现或冻结
-具体存储结构。
+- [ADR-001](../adr/001-independent-core.md)：provider-neutral 独立核心。
+- [ADR-002](../adr/002-python-toolchain.md)：Python 3.12+ 与严格工程工具链。
+- [ADR-003](../adr/003-protocol-versioning-and-revisions.md)：显式协议版本与追加式修订。
+- [ADR-004](../adr/004-control-routing-and-terminal-semantics.md)：强类型控制、安全路由、终态语义。
+- [ADR-005](../adr/005-persistent-runtime-storage.md)：SQLite 权威状态、事务 outbox、JSONL 与内容寻址 Artifact。
+- [ADR-006](../adr/006-runtime-control-and-recovery.md)：状态机、控制屏障、恢复与外部副作用语义。
 
 ## 代码入口
 
-- `src/graph_engineering/models/`：六组公共 Pydantic v2 协议。
-- `src/graph_engineering/schema.py`：公共模型注册表和稳定 Schema 导出。
-- `src/graph_engineering/cli.py`：Typer CLI 与静态 Graph 验证。
-- `schemas/`：30 个提交的 JSON Schema 快照。
-- `tests/fixtures/{valid,invalid}/`：五类合法/非法协议样例。
-- `tests/`：36 个 Phase 0 测试。
+- `src/graph_engineering/runtime/store.py`：SQLite migration、事务、只读连接和 event outbox。
+- `src/graph_engineering/runtime/events.py`：幂等追加 JSONL Event Store。
+- `src/graph_engineering/runtime/artifacts.py`：内容寻址 Artifact Store。
+- `src/graph_engineering/runtime/engine.py`：串行 Scheduler、Control API、恢复与报告编译。
+- `src/graph_engineering/runtime/fakes.py`：Fake Executor/Verifier 与 external handle 查询。
+- `src/graph_engineering/runtime/types.py`：强类型只读 RunSnapshot。
+- `tests/test_runtime_*.py`：Phase 1 存储、执行、控制和恢复验收测试。
 
-## 数据与协议
+## 数据、迁移与状态机
 
-- 当前公共 Schema 版本：`1.0`。
-- 包版本：`0.1.0`。
-- Schema 文件：`schemas/*.schema.json`（30 个）。
-- Graph 输入支持 JSON/YAML；Phase 0 只验证，不执行。
-- Core 中不存在 Codex 或 Claude Code 专属 Session 字段。
+- 包版本：`0.2.0`；公共协议版本仍为 `1.0`。
+- SQLite migration 版本：`2`；表包括 runs、nodes、attempts、edge_traversals、budgets、
+  checkpoints、external_handles、control_intents、reports、artifact_metadata、run_artifacts、
+  event_outbox。
+- Run 运行态：`running → pause_requested/quiescing → paused/running`；终态使用公共
+  `succeeded/failed/error/interrupted/cancelled`。
+- Node/attempt 内部态：pending、ready、running、succeeded、failed、error、cancelled。
+- JSONL 是 outbox 的追加式审计投影；SQLite 是权威状态。
 
 ## 验证结果
 
-2026-08-16 使用 CPython 3.13.14 验证（项目声明并由打包元数据约束为 Python 3.12+）：
+2026-08-16，CPython 3.12.10（另在 CPython 3.13.14 完成兼容性复跑）：
 
-- `.venv\\Scripts\\python -m pip install -e ".[dev]"`：成功。
-- `.venv\\Scripts\\ge schema export --output schemas`：成功，导出 30 个 Schema。
-- `.venv\\Scripts\\python -m pytest`：36 passed。
-- `.venv\\Scripts\\python -m mypy src tests`：成功，0 issues。
-- `.venv\\Scripts\\python -m ruff check src tests`：成功。
-- `.venv\\Scripts\\python -m ruff format --check src tests`：成功。
-- 合法 Graph：退出码 0；非法 Graph：退出码 2，报告 `nodes[0].node_type` 和
-  `edges[0].condition`。
+- `py -3.12 --version`：`Python 3.12.10`。
+- `py -3.12 -m venv .local\venv312`：成功创建隔离环境（`.local/` 已忽略）。
+- `.local\venv312\Scripts\python -m pip install -e ".[dev]"`：成功安装 `graph-engineering 0.2.0`。
+- `.local\venv312\Scripts\python -m pytest --basetemp C:\Users\ADMIN\AppData\Local\Temp\graph-engineering-phase1-review-py312-final2`：62 passed。
+- `.local\venv312\Scripts\python -m mypy src tests`：0 issues（30 source files）。
+- `.local\venv312\Scripts\python -m ruff check src tests`：通过。
+- `.local\venv312\Scripts\python -m ruff format --check src tests`：30 files already formatted。
+- `.local\venv312\Scripts\ge schema export --output schemas`：导出 30 个 Schema。
+- `git diff --exit-code -- schemas`：通过，无 Schema 漂移。
+- CPython 3.13.14 独立复跑：同样 62 passed，mypy/Ruff 检查通过。
 
-最终复跑和独立干净环境安装证据记录在 `docs/phases/phase-0-handoff.md`。
+## 已知风险
 
-## 已知问题
-
-- 当前机器只有 Python 3.13.14；`requires-python = ">=3.12"` 与 mypy 的 Python 3.12
-  目标已配置，但尚未在本机用 CPython 3.12 二进制执行测试。
-- Pydantic `model_validator` 施加的跨字段不变量不能全部仅由 JSON Schema validator
-  复现；权威验证入口是 Pydantic 模型/`ge graph validate`。
-- 首个正式发布的平台支持矩阵和容器隔离仍未冻结。
+- SQLite 与 JSONL 采用事务 outbox，状态/event intent 原子，但 JSONL 投影是 crash-recovery
+  后最终一致，不宣称跨文件原子写。
+- 无 handle 的 `triggering` 外部操作只能标记为 uncertain 并停止，无法提供 exactly-once；
+  真实外部系统的查询/取消/补偿留到后续阶段。
+- Phase 1 只使用同步 Fake 边界；真实进程终止、Session 恢复和 worktree 安全属于 Phase 2。
+- `accepted_commit` 仅完成强类型记录；实际 Git worktree materialization 属于 Phase 2。
+- FinalReport 是 Phase 1 基础版本；完整 requirement matrix、多维 Review/GitHub 证据属于 Phase 5。
 
 ## 工作区状态
 
-- 分支：`phase/0-foundation`。
-- 基线提交：`c978ceb`（`main`/`origin/main`）。
-- Phase 0 实现提交：`c1a56b2`；该分支不得自动合并。
-- 开始时用户已有的 `DESIGN.md`、`README.md` 和新增 Phase 文档修改均已保留并纳入
-  Phase 0 对齐，没有回退或重新生成。
+- 分支：`phase/1-runtime`。
+- 基线与当前已提交 HEAD：`ece58b0`（已合并 Phase 0 的 `origin/main`）。
+- Phase 1 修改：当前全部未提交；没有覆盖或回退用户修改。
+- 未推送、未创建 PR、未合并。
 
 ## 下一阶段第一步
 
-Human 审阅并明确批准 Phase 0 后，才可合并本分支。Phase 1 应从更新后的 `main` 创建独立
-分支，先为 SQLite State Store、JSONL Event Store、事务屏障和 Fake Executor/Verifier
-编写 ADR 与状态机测试；不得复用或放宽 Phase 0 的公共协议不变量。
+Human 审阅 Phase 1 的状态/事件事务语义、恢复证据和完整 diff；明确批准并由 Human 完成
+集成后，才可从更新后的 `main` 创建 Phase 2 分支。Phase 2 第一步是冻结 Codex capability/
+preflight 与 provider-neutral Adapter 边界，不得把 provider Session wire format写入 Core。
