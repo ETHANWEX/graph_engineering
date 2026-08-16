@@ -197,7 +197,7 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 
 ## 当前开发状态
 
-- 已完成阶段：Phase 0；Phase 1 已在 `phase/1-runtime` 实现并通过本阶段验证，等待 Human 审阅。
+- 已完成阶段：Phase 0；Phase 1 已在 `phase/1-runtime` 实现、通过本阶段验证并获 Human 认可，交付分支等待集成。
 - 已实现边界：协议、Schema、静态 Graph 校验、SQLite/JSONL/Artifact 持久化、串行 Fake Runtime、控制屏障、恢复和基础报告。
 - 尚未实现：真实 Executor/Verifier Adapter、Codex、Context Builder、Git worktree、自然语言 Human Gateway、daemon、HTTP、GitHub、Plugin/MCP/UI。
 - 当前设计：[DESIGN.md](DESIGN.md)

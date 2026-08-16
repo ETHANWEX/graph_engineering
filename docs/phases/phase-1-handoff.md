@@ -5,9 +5,10 @@
 - Design: `DESIGN.md` v0.2.
 - Phase: Phase 1, persistent serial Graph Runtime.
 - Branch: `phase/1-runtime`.
-- Base/current committed HEAD: `ece58b0` (Phase 0 merge on `origin/main`).
-- Phase 1 commit: none; all Phase 1 changes are intentionally uncommitted pending Human review.
-- Remote/PR/merge: not pushed, no PR created, not merged.
+- Base: `ece58b0` (Phase 0 merge on `origin/main`).
+- Phase 1 implementation commit: `5bad314`; final handoff metadata commit is branch `HEAD`.
+- Review/delivery: Human approved; delivery branch is ready for Human-controlled integration.
+- PR/merge: no PR created, not merged.
 
 Phase 1 implements the SQLite/JSONL/Artifact persistence boundary, deterministic serial Fake
 Runtime, typed control barriers, recovery, Run inheritance, and basic terminal reports. It does not
@@ -96,13 +97,13 @@ temporary directories received unreadable ACLs. The identical test suite was rer
 sandbox boundary and passed; no assertion failed. This environment artifact does not affect the
 repository implementation.
 
-## Changed areas and uncommitted work
+## Changed areas and committed work
 
 - Added ADR-005, ADR-006, Phase 1 scope, and this handoff.
 - Added `src/graph_engineering/runtime/` (store, events, artifacts, fakes, engine, errors, read types).
 - Added four Phase 1 test modules, helpers, and two runtime fixtures.
 - Updated README, CURRENT status, and package version/description.
-- All listed Phase 1 changes are uncommitted. No unrelated user changes were present or modified.
+- All listed Phase 1 changes are committed. No unrelated user changes were present or modified.
 
 ## Known risks
 
@@ -116,7 +117,7 @@ repository implementation.
 
 ## Next phase first step
 
-After Human review, explicit approval, and Human-controlled integration of this branch, create a new
-Phase 2 branch from updated `main`. Begin with an ADR and failing tests for Codex preflight,
+After Human-controlled integration of this branch, create a new Phase 2 branch from updated `main`.
+Begin with an ADR and failing tests for Codex preflight,
 capability negotiation, and a provider-neutral Executor Adapter. Do not introduce provider-specific
 Session wire formats into Core and do not auto-merge delivery branches.

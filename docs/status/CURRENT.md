@@ -2,8 +2,8 @@
 
 ## 当前阶段
 
-Phase 1：持久化 Graph Runtime 已在 `phase/1-runtime` 实现并通过本阶段验证，等待 Human
-审阅；未提交、未推送、未创建 PR，也未合并到 `main`。
+Phase 1：持久化 Graph Runtime 已在 `phase/1-runtime` 实现、通过本阶段验证并获 Human
+认可；交付分支等待 Human 集成，未创建 PR，也未合并到 `main`。
 
 ## 已完成
 
@@ -93,12 +93,13 @@ Phase 1：持久化 Graph Runtime 已在 `phase/1-runtime` 实现并通过本阶
 ## 工作区状态
 
 - 分支：`phase/1-runtime`。
-- 基线与当前已提交 HEAD：`ece58b0`（已合并 Phase 0 的 `origin/main`）。
-- Phase 1 修改：当前全部未提交；没有覆盖或回退用户修改。
-- 未推送、未创建 PR、未合并。
+- 基线：`ece58b0`（已合并 Phase 0 的 `origin/main`）。
+- Phase 1 实现提交：`5bad314`；最终交接元数据提交为本分支 `HEAD`。
+- Phase 1 修改已全部提交；没有未提交修改，也没有覆盖或回退用户修改。
+- Human 已认可交付；未创建 PR、未合并。
 
 ## 下一阶段第一步
 
-Human 审阅 Phase 1 的状态/事件事务语义、恢复证据和完整 diff；明确批准并由 Human 完成
-集成后，才可从更新后的 `main` 创建 Phase 2 分支。Phase 2 第一步是冻结 Codex capability/
+由 Human 控制将 `phase/1-runtime` 集成到 `main`；集成后，才可从更新后的 `main` 创建
+Phase 2 分支。Phase 2 第一步是冻结 Codex capability/
 preflight 与 provider-neutral Adapter 边界，不得把 provider Session wire format写入 Core。
