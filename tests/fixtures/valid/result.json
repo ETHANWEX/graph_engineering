@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "status": "failed",
+  "summary": "The implementation completed but acceptance did not pass.",
+  "changed_files": ["src/orders.py"],
+  "decisions": [],
+  "remaining_risks": ["Retry behavior remains unverified"],
+  "next_actions": ["Repair the partial-success behavior"],
+  "artifacts": [],
+  "failure_reason": "Acceptance test partial-success failed"
+}
+

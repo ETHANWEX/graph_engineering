@@ -1,0 +1,46 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "cost_units": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cost Units"
+    },
+    "duration_seconds": {
+      "minimum": 0,
+      "title": "Duration Seconds",
+      "type": "integer"
+    },
+    "executor_calls": {
+      "minimum": 0,
+      "title": "Executor Calls",
+      "type": "integer"
+    },
+    "repair_iterations": {
+      "minimum": 0,
+      "title": "Repair Iterations",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "duration_seconds",
+    "executor_calls",
+    "repair_iterations"
+  ],
+  "title": "BudgetUsage",
+  "type": "object"
+}

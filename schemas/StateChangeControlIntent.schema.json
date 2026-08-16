@@ -1,0 +1,204 @@
+{
+  "$defs": {
+    "ControlReason": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ControlReasonCode"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "code"
+      ],
+      "title": "ControlReason",
+      "type": "object"
+    },
+    "ControlReasonCode": {
+      "enum": [
+        "human_request",
+        "direction_change",
+        "risk_review",
+        "acceptance_decision",
+        "other"
+      ],
+      "title": "ControlReasonCode",
+      "type": "string"
+    },
+    "RestartFrom": {
+      "additionalProperties": false,
+      "properties": {
+        "reference": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reference"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "strategy": {
+          "$ref": "#/$defs/RestartStrategy"
+        }
+      },
+      "required": [
+        "schema_version",
+        "strategy"
+      ],
+      "title": "RestartFrom",
+      "type": "object"
+    },
+    "RestartStrategy": {
+      "enum": [
+        "clean_base",
+        "accepted_commit",
+        "checkpoint"
+      ],
+      "title": "RestartStrategy",
+      "type": "string"
+    },
+    "StateChangeAction": {
+      "enum": [
+        "pause",
+        "resume",
+        "interrupt",
+        "revise",
+        "restart",
+        "accept",
+        "reject"
+      ],
+      "title": "StateChangeAction",
+      "type": "string"
+    },
+    "Urgency": {
+      "enum": [
+        "normal",
+        "immediate"
+      ],
+      "title": "Urgency",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "$ref": "#/$defs/StateChangeAction"
+    },
+    "actor_id": {
+      "minLength": 1,
+      "title": "Actor Id",
+      "type": "string"
+    },
+    "confidence": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "intent_id": {
+      "minLength": 1,
+      "title": "Intent Id",
+      "type": "string"
+    },
+    "intent_kind": {
+      "const": "state_change",
+      "title": "Intent Kind",
+      "type": "string"
+    },
+    "project_id": {
+      "minLength": 1,
+      "title": "Project Id",
+      "type": "string"
+    },
+    "proposed_contract_revision": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Proposed Contract Revision"
+    },
+    "reason": {
+      "$ref": "#/$defs/ControlReason"
+    },
+    "requires_confirmation": {
+      "title": "Requires Confirmation",
+      "type": "boolean"
+    },
+    "restart_from": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RestartFrom"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "run_id": {
+      "minLength": 1,
+      "title": "Run Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_message_id": {
+      "minLength": 1,
+      "title": "Source Message Id",
+      "type": "string"
+    },
+    "urgency": {
+      "$ref": "#/$defs/Urgency"
+    }
+  },
+  "required": [
+    "schema_version",
+    "intent_kind",
+    "intent_id",
+    "source_message_id",
+    "actor_id",
+    "project_id",
+    "run_id",
+    "action",
+    "reason",
+    "urgency",
+    "confidence",
+    "requires_confirmation"
+  ],
+  "title": "StateChangeControlIntent",
+  "type": "object"
+}

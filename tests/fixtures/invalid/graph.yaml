@@ -1,0 +1,18 @@
+schema_version: "1.0"
+graph_id: graph-orders
+contract:
+  schema_version: "1.0"
+  contract_id: contract-orders
+  revision: 1
+entry_node_id: implement
+nodes:
+  - schema_version: "1.0"
+    node_id: implement
+    node_type: python_eval
+    objective: This node type is forbidden
+edges:
+  - schema_version: "1.0"
+    from_node: implement
+    to_node: missing
+    condition: "__import__('os').system('whoami')"
+

@@ -1,0 +1,126 @@
+{
+  "$defs": {
+    "ControlOutcome": {
+      "enum": [
+        "applied",
+        "rejected",
+        "no_op",
+        "error"
+      ],
+      "title": "ControlOutcome",
+      "type": "string"
+    },
+    "Error": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "pattern": "^[a-z0-9_.-]+$",
+          "title": "Code",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": true,
+          "title": "Details",
+          "type": "object"
+        },
+        "kind": {
+          "$ref": "#/$defs/ErrorKind"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "retryable": {
+          "title": "Retryable",
+          "type": "boolean"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "code",
+        "message",
+        "retryable"
+      ],
+      "title": "Error",
+      "type": "object"
+    },
+    "ErrorKind": {
+      "enum": [
+        "executor",
+        "verifier",
+        "infrastructure",
+        "authorization",
+        "policy",
+        "timeout",
+        "internal"
+      ],
+      "title": "ErrorKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "error": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Error"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "intent_id": {
+      "minLength": 1,
+      "title": "Intent Id",
+      "type": "string"
+    },
+    "message": {
+      "minLength": 1,
+      "title": "Message",
+      "type": "string"
+    },
+    "outcome": {
+      "$ref": "#/$defs/ControlOutcome"
+    },
+    "resulting_run_status": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Resulting Run Status"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "state_changed": {
+      "title": "State Changed",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "schema_version",
+    "intent_id",
+    "outcome",
+    "state_changed",
+    "message"
+  ],
+  "title": "ControlActionResult",
+  "type": "object"
+}

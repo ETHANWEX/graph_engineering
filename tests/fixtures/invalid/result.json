@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "status": "error",
+  "summary": "The executor process disappeared without a classified error.",
+  "changed_files": [],
+  "decisions": [],
+  "remaining_risks": [],
+  "next_actions": [],
+  "artifacts": []
+}
+

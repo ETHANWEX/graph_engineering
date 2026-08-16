@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0",
+  "report_id": "report-run-1",
+  "report_revision": 1,
+  "frozen_at": "2026-08-16T08:00:00Z",
+  "relationship": {
+    "schema_version": "1.0",
+    "run_id": "run-1",
+    "parent_run_id": null,
+    "supersedes_run_id": null
+  },
+  "contract": {
+    "schema_version": "1.0",
+    "contract_id": "contract-orders",
+    "revision": 1
+  },
+  "terminal_status": "interrupted",
+  "terminal_reason": "human_interrupted",
+  "summary": "The run stopped at a safe point after a Human interruption.",
+  "changed_files": ["src/orders.py"],
+  "completed_node_ids": ["inspect"],
+  "verification_artifacts": [],
+  "review_artifacts": [],
+  "control_intent_ids": ["intent-stop"],
+  "unverified_items": [
+    {
+      "schema_version": "1.0",
+      "item_id": "ci",
+      "description": "Remote CI",
+      "reason": "The run was interrupted before CI started.",
+      "impact": "Delivery readiness is unknown."
+    }
+  ],
+  "external_effects": [
+    {
+      "schema_version": "1.0",
+      "effect_id": "notification-1",
+      "description": "A non-retractable notification was sent.",
+      "reversible": false,
+      "compensation_status": "not_available",
+      "evidence_refs": []
+    }
+  ],
+  "budget_usage": {
+    "schema_version": "1.0",
+    "duration_seconds": 120,
+    "executor_calls": 1,
+    "repair_iterations": 0
+  },
+  "residual_risks": ["Partial work remains in the preserved worktree"]
+}
+

@@ -1,0 +1,36 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "criterion_id": {
+      "minLength": 1,
+      "title": "Criterion Id",
+      "type": "string"
+    },
+    "description": {
+      "minLength": 1,
+      "title": "Description",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "verifier_refs": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Verifier Refs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "criterion_id",
+    "description",
+    "verifier_refs"
+  ],
+  "title": "AcceptanceCriterion",
+  "type": "object"
+}

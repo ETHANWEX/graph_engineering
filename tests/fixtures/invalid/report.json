@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "report_id": "report-run-1",
+  "report_revision": 1,
+  "frozen_at": "2026-08-16T08:00:00Z",
+  "relationship": {
+    "schema_version": "1.0",
+    "run_id": "run-1"
+  },
+  "contract": {
+    "schema_version": "1.0",
+    "contract_id": "contract-orders",
+    "revision": 1
+  },
+  "terminal_status": "succeeded",
+  "terminal_reason": "execution_error",
+  "summary": "An invalid success report with an error reason.",
+  "budget_usage": {
+    "schema_version": "1.0",
+    "duration_seconds": 1,
+    "executor_calls": 1,
+    "repair_iterations": 0
+  }
+}

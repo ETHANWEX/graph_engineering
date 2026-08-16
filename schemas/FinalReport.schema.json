@@ -1,0 +1,507 @@
+{
+  "$defs": {
+    "Artifact": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ArtifactKind"
+        },
+        "media_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Media Type"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "sha256_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256 Digest"
+        },
+        "size_bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Size Bytes"
+        },
+        "uri": {
+          "description": "Opaque, provider-neutral artifact reference",
+          "minLength": 1,
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "artifact_id",
+        "kind",
+        "uri",
+        "created_at"
+      ],
+      "title": "Artifact",
+      "type": "object"
+    },
+    "ArtifactKind": {
+      "enum": [
+        "log",
+        "report",
+        "patch",
+        "source",
+        "test_result",
+        "evidence",
+        "other"
+      ],
+      "title": "ArtifactKind",
+      "type": "string"
+    },
+    "BudgetUsage": {
+      "additionalProperties": false,
+      "properties": {
+        "cost_units": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cost Units"
+        },
+        "duration_seconds": {
+          "minimum": 0,
+          "title": "Duration Seconds",
+          "type": "integer"
+        },
+        "executor_calls": {
+          "minimum": 0,
+          "title": "Executor Calls",
+          "type": "integer"
+        },
+        "repair_iterations": {
+          "minimum": 0,
+          "title": "Repair Iterations",
+          "type": "integer"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "duration_seconds",
+        "executor_calls",
+        "repair_iterations"
+      ],
+      "title": "BudgetUsage",
+      "type": "object"
+    },
+    "ContractRef": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_id": {
+          "minLength": 1,
+          "title": "Contract Id",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "contract_id",
+        "revision"
+      ],
+      "title": "ContractRef",
+      "type": "object"
+    },
+    "Error": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "pattern": "^[a-z0-9_.-]+$",
+          "title": "Code",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": true,
+          "title": "Details",
+          "type": "object"
+        },
+        "kind": {
+          "$ref": "#/$defs/ErrorKind"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "retryable": {
+          "title": "Retryable",
+          "type": "boolean"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "code",
+        "message",
+        "retryable"
+      ],
+      "title": "Error",
+      "type": "object"
+    },
+    "ErrorKind": {
+      "enum": [
+        "executor",
+        "verifier",
+        "infrastructure",
+        "authorization",
+        "policy",
+        "timeout",
+        "internal"
+      ],
+      "title": "ErrorKind",
+      "type": "string"
+    },
+    "ExternalEffect": {
+      "additionalProperties": false,
+      "properties": {
+        "compensation_status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Compensation Status"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "effect_id": {
+          "minLength": 1,
+          "title": "Effect Id",
+          "type": "string"
+        },
+        "evidence_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "reversible": {
+          "title": "Reversible",
+          "type": "boolean"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "effect_id",
+        "description",
+        "reversible"
+      ],
+      "title": "ExternalEffect",
+      "type": "object"
+    },
+    "RunRelationship": {
+      "additionalProperties": false,
+      "properties": {
+        "parent_run_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Run Id"
+        },
+        "run_id": {
+          "minLength": 1,
+          "title": "Run Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "supersedes_run_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Run Id"
+        }
+      },
+      "required": [
+        "schema_version",
+        "run_id"
+      ],
+      "title": "RunRelationship",
+      "type": "object"
+    },
+    "TerminalReason": {
+      "enum": [
+        "completed",
+        "acceptance_failed",
+        "execution_error",
+        "human_interrupted",
+        "human_cancelled",
+        "human_rejected",
+        "budget_exhausted",
+        "authorization_blocked",
+        "contract_conflict"
+      ],
+      "title": "TerminalReason",
+      "type": "string"
+    },
+    "TerminalStatus": {
+      "enum": [
+        "succeeded",
+        "failed",
+        "error",
+        "interrupted",
+        "cancelled",
+        "rejected"
+      ],
+      "title": "TerminalStatus",
+      "type": "string"
+    },
+    "UnverifiedItem": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "impact": {
+          "minLength": 1,
+          "title": "Impact",
+          "type": "string"
+        },
+        "item_id": {
+          "minLength": 1,
+          "title": "Item Id",
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "item_id",
+        "description",
+        "reason",
+        "impact"
+      ],
+      "title": "UnverifiedItem",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "budget_usage": {
+      "$ref": "#/$defs/BudgetUsage"
+    },
+    "changed_files": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Changed Files",
+      "type": "array"
+    },
+    "completed_node_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Completed Node Ids",
+      "type": "array"
+    },
+    "contract": {
+      "$ref": "#/$defs/ContractRef"
+    },
+    "control_intent_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Control Intent Ids",
+      "type": "array"
+    },
+    "error": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Error"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "external_effects": {
+      "items": {
+        "$ref": "#/$defs/ExternalEffect"
+      },
+      "title": "External Effects",
+      "type": "array"
+    },
+    "frozen_at": {
+      "format": "date-time",
+      "title": "Frozen At",
+      "type": "string"
+    },
+    "relationship": {
+      "$ref": "#/$defs/RunRelationship"
+    },
+    "report_id": {
+      "minLength": 1,
+      "title": "Report Id",
+      "type": "string"
+    },
+    "report_revision": {
+      "minimum": 1,
+      "title": "Report Revision",
+      "type": "integer"
+    },
+    "residual_risks": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Residual Risks",
+      "type": "array"
+    },
+    "review_artifacts": {
+      "items": {
+        "$ref": "#/$defs/Artifact"
+      },
+      "title": "Review Artifacts",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "summary": {
+      "minLength": 1,
+      "title": "Summary",
+      "type": "string"
+    },
+    "terminal_reason": {
+      "$ref": "#/$defs/TerminalReason"
+    },
+    "terminal_status": {
+      "$ref": "#/$defs/TerminalStatus"
+    },
+    "unverified_items": {
+      "items": {
+        "$ref": "#/$defs/UnverifiedItem"
+      },
+      "title": "Unverified Items",
+      "type": "array"
+    },
+    "verification_artifacts": {
+      "items": {
+        "$ref": "#/$defs/Artifact"
+      },
+      "title": "Verification Artifacts",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "report_id",
+    "report_revision",
+    "frozen_at",
+    "relationship",
+    "contract",
+    "terminal_status",
+    "terminal_reason",
+    "summary",
+    "budget_usage"
+  ],
+  "title": "FinalReport",
+  "type": "object"
+}

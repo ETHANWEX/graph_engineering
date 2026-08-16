@@ -1,0 +1,127 @@
+{
+  "$defs": {
+    "RouteCondition": {
+      "additionalProperties": false,
+      "description": "Restricted comparison; it is data, never executable source code.",
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/RouteField"
+        },
+        "operator": {
+          "$ref": "#/$defs/RouteOperator"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": [
+        "schema_version",
+        "field",
+        "operator",
+        "value"
+      ],
+      "title": "RouteCondition",
+      "type": "object"
+    },
+    "RouteField": {
+      "enum": [
+        "result.status",
+        "result.retryable",
+        "attempt.number"
+      ],
+      "title": "RouteField",
+      "type": "string"
+    },
+    "RouteOperator": {
+      "enum": [
+        "equals",
+        "not_equals",
+        "in",
+        "not_in"
+      ],
+      "title": "RouteOperator",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "condition": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RouteCondition"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "from_node": {
+      "minLength": 1,
+      "title": "From Node",
+      "type": "string"
+    },
+    "max_iterations": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Max Iterations"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "to_node": {
+      "minLength": 1,
+      "title": "To Node",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "from_node",
+    "to_node"
+  ],
+  "title": "Edge",
+  "type": "object"
+}

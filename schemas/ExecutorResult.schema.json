@@ -1,0 +1,239 @@
+{
+  "$defs": {
+    "Artifact": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ArtifactKind"
+        },
+        "media_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Media Type"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "sha256_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256 Digest"
+        },
+        "size_bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Size Bytes"
+        },
+        "uri": {
+          "description": "Opaque, provider-neutral artifact reference",
+          "minLength": 1,
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "artifact_id",
+        "kind",
+        "uri",
+        "created_at"
+      ],
+      "title": "Artifact",
+      "type": "object"
+    },
+    "ArtifactKind": {
+      "enum": [
+        "log",
+        "report",
+        "patch",
+        "source",
+        "test_result",
+        "evidence",
+        "other"
+      ],
+      "title": "ArtifactKind",
+      "type": "string"
+    },
+    "Error": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "pattern": "^[a-z0-9_.-]+$",
+          "title": "Code",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": true,
+          "title": "Details",
+          "type": "object"
+        },
+        "kind": {
+          "$ref": "#/$defs/ErrorKind"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "retryable": {
+          "title": "Retryable",
+          "type": "boolean"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "code",
+        "message",
+        "retryable"
+      ],
+      "title": "Error",
+      "type": "object"
+    },
+    "ErrorKind": {
+      "enum": [
+        "executor",
+        "verifier",
+        "infrastructure",
+        "authorization",
+        "policy",
+        "timeout",
+        "internal"
+      ],
+      "title": "ErrorKind",
+      "type": "string"
+    },
+    "ExecutorStatus": {
+      "enum": [
+        "succeeded",
+        "failed",
+        "error",
+        "cancelled"
+      ],
+      "title": "ExecutorStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/Artifact"
+      },
+      "title": "Artifacts",
+      "type": "array"
+    },
+    "changed_files": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Changed Files",
+      "type": "array"
+    },
+    "decisions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Decisions",
+      "type": "array"
+    },
+    "error": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Error"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "failure_reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Failure Reason"
+    },
+    "next_actions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Next Actions",
+      "type": "array"
+    },
+    "remaining_risks": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Remaining Risks",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/ExecutorStatus"
+    },
+    "summary": {
+      "minLength": 1,
+      "title": "Summary",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "status",
+    "summary"
+  ],
+  "title": "ExecutorResult",
+  "type": "object"
+}

@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "intent_kind": "query",
+  "intent_id": "intent-2",
+  "source_message_id": "message-2",
+  "actor_id": "human-1",
+  "project_id": "project-1",
+  "run_id": "run-1",
+  "action": "pause",
+  "reason": {
+    "schema_version": "1.0",
+    "code": "human_request"
+  },
+  "confidence": 0.95,
+  "requires_confirmation": false
+}
+

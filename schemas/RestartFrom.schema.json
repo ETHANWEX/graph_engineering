@@ -1,0 +1,42 @@
+{
+  "$defs": {
+    "RestartStrategy": {
+      "enum": [
+        "clean_base",
+        "accepted_commit",
+        "checkpoint"
+      ],
+      "title": "RestartStrategy",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "reference": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reference"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "strategy": {
+      "$ref": "#/$defs/RestartStrategy"
+    }
+  },
+  "required": [
+    "schema_version",
+    "strategy"
+  ],
+  "title": "RestartFrom",
+  "type": "object"
+}

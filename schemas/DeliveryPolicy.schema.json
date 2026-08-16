@@ -1,0 +1,37 @@
+{
+  "$defs": {
+    "DeliveryType": {
+      "enum": [
+        "patch",
+        "commit",
+        "pull_request",
+        "report_only"
+      ],
+      "title": "DeliveryType",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "auto_merge": {
+      "const": false,
+      "default": false,
+      "title": "Auto Merge",
+      "type": "boolean"
+    },
+    "delivery_type": {
+      "$ref": "#/$defs/DeliveryType"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "delivery_type"
+  ],
+  "title": "DeliveryPolicy",
+  "type": "object"
+}

@@ -1,0 +1,107 @@
+{
+  "$defs": {
+    "Budget": {
+      "additionalProperties": false,
+      "properties": {
+        "max_cost_units": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Cost Units"
+        },
+        "max_duration_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Max Duration Seconds",
+          "type": "integer"
+        },
+        "max_executor_calls": {
+          "exclusiveMinimum": 0,
+          "title": "Max Executor Calls",
+          "type": "integer"
+        },
+        "max_repair_iterations": {
+          "minimum": 0,
+          "title": "Max Repair Iterations",
+          "type": "integer"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "max_duration_seconds",
+        "max_executor_calls",
+        "max_repair_iterations"
+      ],
+      "title": "Budget",
+      "type": "object"
+    },
+    "NodeType": {
+      "enum": [
+        "agent",
+        "command",
+        "verifier",
+        "router",
+        "delivery"
+      ],
+      "title": "NodeType",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "budget": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Budget"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "config": {
+      "additionalProperties": true,
+      "title": "Config",
+      "type": "object"
+    },
+    "node_id": {
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.-]+$",
+      "title": "Node Id",
+      "type": "string"
+    },
+    "node_type": {
+      "$ref": "#/$defs/NodeType"
+    },
+    "objective": {
+      "minLength": 1,
+      "title": "Objective",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "node_id",
+    "node_type",
+    "objective"
+  ],
+  "title": "Node",
+  "type": "object"
+}

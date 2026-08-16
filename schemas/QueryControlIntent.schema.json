@@ -1,0 +1,125 @@
+{
+  "$defs": {
+    "ControlReason": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ControlReasonCode"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "code"
+      ],
+      "title": "ControlReason",
+      "type": "object"
+    },
+    "ControlReasonCode": {
+      "enum": [
+        "human_request",
+        "direction_change",
+        "risk_review",
+        "acceptance_decision",
+        "other"
+      ],
+      "title": "ControlReasonCode",
+      "type": "string"
+    },
+    "QueryAction": {
+      "enum": [
+        "query_progress",
+        "query_risk",
+        "query_evidence"
+      ],
+      "title": "QueryAction",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "$ref": "#/$defs/QueryAction"
+    },
+    "actor_id": {
+      "minLength": 1,
+      "title": "Actor Id",
+      "type": "string"
+    },
+    "confidence": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "intent_id": {
+      "minLength": 1,
+      "title": "Intent Id",
+      "type": "string"
+    },
+    "intent_kind": {
+      "const": "query",
+      "title": "Intent Kind",
+      "type": "string"
+    },
+    "project_id": {
+      "minLength": 1,
+      "title": "Project Id",
+      "type": "string"
+    },
+    "reason": {
+      "$ref": "#/$defs/ControlReason"
+    },
+    "requires_confirmation": {
+      "const": false,
+      "default": false,
+      "title": "Requires Confirmation",
+      "type": "boolean"
+    },
+    "run_id": {
+      "minLength": 1,
+      "title": "Run Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_message_id": {
+      "minLength": 1,
+      "title": "Source Message Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "intent_kind",
+    "intent_id",
+    "source_message_id",
+    "actor_id",
+    "project_id",
+    "run_id",
+    "action",
+    "reason",
+    "confidence"
+  ],
+  "title": "QueryControlIntent",
+  "type": "object"
+}

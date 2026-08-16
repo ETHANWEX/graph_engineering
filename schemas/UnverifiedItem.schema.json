@@ -1,0 +1,39 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "description": {
+      "minLength": 1,
+      "title": "Description",
+      "type": "string"
+    },
+    "impact": {
+      "minLength": 1,
+      "title": "Impact",
+      "type": "string"
+    },
+    "item_id": {
+      "minLength": 1,
+      "title": "Item Id",
+      "type": "string"
+    },
+    "reason": {
+      "minLength": 1,
+      "title": "Reason",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "item_id",
+    "description",
+    "reason",
+    "impact"
+  ],
+  "title": "UnverifiedItem",
+  "type": "object"
+}

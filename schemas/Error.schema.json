@@ -1,0 +1,57 @@
+{
+  "$defs": {
+    "ErrorKind": {
+      "enum": [
+        "executor",
+        "verifier",
+        "infrastructure",
+        "authorization",
+        "policy",
+        "timeout",
+        "internal"
+      ],
+      "title": "ErrorKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "code": {
+      "minLength": 1,
+      "pattern": "^[a-z0-9_.-]+$",
+      "title": "Code",
+      "type": "string"
+    },
+    "details": {
+      "additionalProperties": true,
+      "title": "Details",
+      "type": "object"
+    },
+    "kind": {
+      "$ref": "#/$defs/ErrorKind"
+    },
+    "message": {
+      "minLength": 1,
+      "title": "Message",
+      "type": "string"
+    },
+    "retryable": {
+      "title": "Retryable",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "kind",
+    "code",
+    "message",
+    "retryable"
+  ],
+  "title": "Error",
+  "type": "object"
+}

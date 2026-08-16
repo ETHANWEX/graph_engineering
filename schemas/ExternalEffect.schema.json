@@ -1,0 +1,51 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "compensation_status": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Compensation Status"
+    },
+    "description": {
+      "minLength": 1,
+      "title": "Description",
+      "type": "string"
+    },
+    "effect_id": {
+      "minLength": 1,
+      "title": "Effect Id",
+      "type": "string"
+    },
+    "evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "reversible": {
+      "title": "Reversible",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "effect_id",
+    "description",
+    "reversible"
+  ],
+  "title": "ExternalEffect",
+  "type": "object"
+}

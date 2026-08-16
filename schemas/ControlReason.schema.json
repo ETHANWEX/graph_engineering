@@ -1,0 +1,44 @@
+{
+  "$defs": {
+    "ControlReasonCode": {
+      "enum": [
+        "human_request",
+        "direction_change",
+        "risk_review",
+        "acceptance_decision",
+        "other"
+      ],
+      "title": "ControlReasonCode",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "code": {
+      "$ref": "#/$defs/ControlReasonCode"
+    },
+    "detail": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Detail"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "code"
+  ],
+  "title": "ControlReason",
+  "type": "object"
+}
