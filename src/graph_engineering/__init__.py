@@ -1,3 +1,3 @@
-"""Graph Engineering's language-neutral Phase 0 protocol package."""
+"""Graph Engineering's provider-neutral protocols and persistent runtime."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

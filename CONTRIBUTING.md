@@ -14,7 +14,7 @@ python -m venv .venv
 .venv\Scripts\python -m pip install -e ".[dev]"
 ```
 
-Run the Phase 0 checks:
+Run the complete Phase 0–1 checks:
 
 ```powershell
 .venv\Scripts\python -m pytest
