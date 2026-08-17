@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "verifier_id": "fixture-ci",
+  "revision": 1,
+  "verifier_type": "builtin/http-pipeline",
+  "runtime": "http",
+  "entrypoint": [],
+  "capabilities": {
+    "network": {"allow": ["ci.example.test"]},
+    "filesystem": {"read": [], "write": []},
+    "secrets": ["CI_TOKEN"]
+  },
+  "external_side_effects": true
+}

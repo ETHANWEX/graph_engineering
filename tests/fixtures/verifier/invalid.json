@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "verifier_id": "fixture-ci",
+  "revision": 1,
+  "verifier_type": "project/subprocess",
+  "runtime": "python",
+  "entrypoint": [],
+  "capabilities": {
+    "network": {"allow": ["*.example.test"]},
+    "filesystem": {"read": [], "write": []},
+    "secrets": []
+  },
+  "external_side_effects": false
+}
