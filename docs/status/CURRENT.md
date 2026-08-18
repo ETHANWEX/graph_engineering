@@ -2,18 +2,19 @@
 
 ## 当前阶段
 
-Phase 5：Review、GitHub 与交付已在 `phase/5-review-github-delivery` 完成实现和验证。Human
-已授权提交和推送；实现提交 `db7dd54` 已推送到远端 Phase 5 分支。分支创建自精确
-`origin/main=8adf9e2760cc525a613c3eb27fd0835d77525a9c`。未创建 Graph Engineering PR，未修改 main。
+Phase 5 已通过 PR #6 合并到远端 main。当前位于 `phase/6-enhancements`，从精确
+`origin/main=eedc46d1a607c6169cb43eca79ef56bdd137efac` 创建，仅准备 Phase 6 总路线和 Phase 6A
+新对话启动 Prompt；Phase 6 功能实现尚未开始。
 
 ## 已核实 baseline 与集成顺序
 
 - Phase 2：`53df64ceea904bdad1f39f04a5d3168f5ae40d25`。
 - Phase 3：`b746b3f6b9f70838a6fe063e8a90104be7bca8a8`。
 - Phase 4：`7410a66310f36799704e58cf743875d9383f5c87`。
-- 三者均为 `origin/main` ancestor，提交图确认 Phase 2 → Phase 3 → Phase 4。
-- 分支创建时 Phase 5 HEAD、merge-base 和 `origin/main` 三者完全一致。
-- 本地 `main` 落后远端 6 个提交；未 reset、rebase、cherry-pick 或改写。
+- Phase 5 实现：`db7dd54`；交接：`4ebeb2da969e3cce9210fc3ed8dc23dbf3986662`。
+- Phase 2–5 批准提交均为最新 `origin/main` ancestor；提交图确认顺序，Phase 5 由 PR #6 合并。
+- Phase 6 分支创建时 HEAD、merge-base 和 `origin/main` 完全一致。
+- 未 reset、rebase、cherry-pick 或改写本地 main。
 
 ## Phase 5 已完成
 
@@ -49,9 +50,11 @@ Phase 5：Review、GitHub 与交付已在 `phase/5-review-github-delivery` 完�
 - 未获得 Human 对隔离真实 GitHub repository 的额外写授权，因此真实 GitHub PR E2E 未执行、
   明确 unverified；Graph Engineering 和其他真实 repository 均未产生 PR 副作用。
 - 跨平台真实 Codex/GitHub 未验证；当前真实 Codex 证据仅 Windows。
-- Runtime 仍为 foreground/recoverable，不是 daemon；Phase 6 未开始。
+- Runtime 仍为 foreground/recoverable，不是 daemon；Phase 6A 功能实现未开始。
 
 ## 下一步
 
-Human 审阅已推送的 Phase 5 提交和验证证据，并决定后续集成方式。仍不得自动 merge、
-修改/push main、创建 Graph Engineering PR 或开始 Phase 6。
+Human 审阅 Phase 6 总路线和持久化启动 Prompt。后续新对话必须先读取
+`docs/phases/phase-6.md` 与 `docs/prompts/phase-6a-start.md`，再在同一
+`phase/6-enhancements` 分支实现 Phase 6A。路线初始化提交已获 Human 授权；未经后续明确批准
+不得推送该分支、创建 Phase 6A 功能提交或开始 Phase 6B。

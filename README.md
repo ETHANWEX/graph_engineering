@@ -253,16 +253,18 @@ Final Report 计划包含：需求与 Contract 版本、代码变更、测试和
 | Phase 3 | 持续自然语言控制对话、Discovery、Contract 冻结与修订 |
 | Phase 4 | 动态 Verifier、HTTP Pipeline、secret 和外部副作用控制 |
 | Phase 5 | 多维 Review、GitHub PR、证据矩阵和所有终态 Final Report |
-| Phase 6 | Codex Plugin、Claude Code、并行图、容器、遥测和可选 UI |
+| Phase 6 | Runtime/MCP/Codex Plugin、并行图、容器、遥测和可选 UI；Claude Code 暂未排期 |
 
 Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足验收条件前，不进入下一阶段。
 
 ## 当前开发状态
 
-- 已合并阶段：Phase 0–4；Phase 2/3/4 批准提交分别为 `53df64c`、`b746b3f`、`7410a66`。
-- 活跃阶段：Phase 5 实现与验证完成，精确 baseline 为
-  `8adf9e2760cc525a613c3eb27fd0835d77525a9c`；实现提交 `db7dd54` 已推送到 Phase 5 远端分支。
-- 当前未授权：Graph Engineering 真实 PR、main 修改、merge、auto-merge、Phase 6。
+- 已合并阶段：Phase 0–5；Phase 5 通过 PR #6 进入 `origin/main`，实现/交接提交为
+  `db7dd54` / `4ebeb2d`。
+- 当前分支：`phase/6-enhancements`，基线为
+  `eedc46d1a607c6169cb43eca79ef56bdd137efac`；仅准备 Phase 6 路线，功能开发尚未开始。
+- Phase 6 使用单一长期分支，6A–6N 以独立阶段提交迭代；Claude Code 暂未排期。
+- 当前未授权：Phase 6 功能提交/推送、Graph Engineering PR、main 修改、merge 或 auto-merge。
 - GitHub CLI 2.97.0 已安装，`pr`、`run`、`api` 命令入口可用；当前未登录任何 GitHub host，
   因此私有仓库读取和真实 GitHub E2E 仍保持未验证。隔离 provider fixture 不冒充真实 E2E。
 - 当前设计：[DESIGN.md](DESIGN.md)
@@ -279,6 +281,8 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 - Phase 4 交接：[docs/phases/phase-4-handoff.md](docs/phases/phase-4-handoff.md)
 - Phase 5 范围：[docs/phases/phase-5.md](docs/phases/phase-5.md)
 - Phase 5 交接：[docs/phases/phase-5-handoff.md](docs/phases/phase-5-handoff.md)
+- Phase 6 总路线：[docs/phases/phase-6.md](docs/phases/phase-6.md)
+- Phase 6A 启动 Prompt：[docs/prompts/phase-6a-start.md](docs/prompts/phase-6a-start.md)
 - 协作约定：[AGENTS.md](AGENTS.md)
 
 README 是项目对外的首要入口。每个阶段完成时都必须同步更新这里的架构、已实现能力、安装方式、示例命令和限制，避免 README 描述超前于代码。
