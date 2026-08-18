@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "graph-engineering"
-version = "0.4.0"
-description = "Provider-neutral graph runtime with persistent Discovery and frozen Contracts"
+version = "0.5.0"
+description = "Provider-neutral graph runtime with frozen dynamic Verifiers"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "Apache-2.0" }

@@ -2,14 +2,14 @@
 
 Graph Engineering 是一个面向自治软件开发的图工程控制层。Human 通过自然语言定义需求和授权边界、随时查询或中断开发，并最终验收成果；Graph Runtime 在冻结的 Contract 内组织 Coding Agent、确定性工具、Verifier、反馈循环和外部系统，持续完成实现、验证、修复、审查与证据交付。
 
-> 当前状态：Phase 3（自然语言 Discovery 与 Contract 冻结）已在 stacked 分支
-> `phase/3-discovery-contract` 实现并完成本地与真实 Codex 验证，等待 Human 审阅。Phase 3
-> 基于已批准的 Phase 2 提交 `53df64c`；Phase 2 必须先于 Phase 3 集成。后台 daemon、
-> 动态/HTTP Verifier、远程 CI、GitHub 和 Plugin/UI 尚未实现。
+> 当前状态：Phase 4（动态 Verifier）已在 stacked 分支 `phase/4-dynamic-verifiers` 实现并
+> 完成确定性、本地 HTTP fixture 和真实 Codex 验证，等待 Human 审阅。Phase 4 精确基于已
+> 批准并推送的 Phase 3 提交 `b746b3f`；强制集成顺序是 Phase 2 → Phase 3 → Phase 4。
+> GitHub 专用集成、PR、自动合并、后台 daemon 和 Plugin/UI 尚未实现。
 
 ## 已实现能力
 
-Phase 0–3 当前提供：
+Phase 0–4 当前提供：
 
 - Python 3.12+、Pydantic v2 和 Typer 的可安装 `src` layout 包。
 - 版本化 Task Contract、Execution Graph、Result、Control、Run 关系和 Report 协议。
@@ -44,8 +44,22 @@ Phase 0–3 当前提供：
 - Codex read-only structured Discovery Adapter；JSONL 保留在 Adapter，原始 stdout/stderr 进入
   Artifact Store。SQLite migration 4 保存 Conversation、Discovery、confirmation、Contract 和
   prepared Run 元数据。
-- 108 个 pytest 测试（62 个 Phase 0–1、29 个 Phase 2、17 个 Phase 3；两个真实 Codex 测试
-  默认跳过并分别显式验收）。
+- exact-name Verifier Registry/SDK，兼容 `builtin/command`，新增声明式
+  `builtin/http-pipeline` 与结构化 `project/subprocess`。
+- HTTP trigger/idempotency key、external handle checkpoint、poll/restart recovery、bounded
+  retry/backoff、report Artifact、cancel 和 redirect allowlist 复核。
+- Manifest runtime/entrypoint/network/filesystem/secret/external-side-effect capability；网络默认
+  拒绝、host 精确 allowlist、argv-only subprocess 和 JSON stdin/stdout。
+- secret 仅按引用注入；raw、URL encoded、base64、overlap 和跨 chunk 日志在进入 Artifact、
+  error 或报告前脱敏，Codex prompt 永不包含 secret 值。
+- validate/test/dry-run/Human permission summary/freeze 生命周期；Manifest/source/tests/fixtures
+  hash 与 Contract revision 绑定，冻结漂移在副作用前拒绝。
+- declaration-first Discovery 与 Codex structured Verifier bundle generation；Manifest、实现、
+  fixtures、tests、raw JSONL/stderr 均独立验证或保存。
+- SQLite migration 5 保存 Verifier revision/lifecycle evidence/Contract binding，并扩展 external
+  handle 的 verifier owner、cancel state、report 和 residual-effect 元数据。
+- 135 个 pytest 测试（Phase 0–3 的 108 项基线保持；3 个真实 Codex 测试默认跳过并分别显式
+  验收）。
 
 开发安装：
 
@@ -59,6 +73,8 @@ python -m venv .venv
 ```powershell
 ge start --project-root .
 ge graph validate tests/fixtures/valid/graph.yaml
+ge verifier list
+ge verifier validate tests/fixtures/verifier/valid.json
 ge schema export --output schemas
 ```
 

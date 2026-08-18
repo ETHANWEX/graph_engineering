@@ -74,6 +74,12 @@ class StateStore:
                     "INSERT INTO schema_migrations(version, applied_at) VALUES (4, ?)",
                     (timestamp(),),
                 )
+            if 5 not in applied:
+                connection.executescript(_MIGRATION_5)
+                connection.execute(
+                    "INSERT INTO schema_migrations(version, applied_at) VALUES (5, ?)",
+                    (timestamp(),),
+                )
             connection.commit()
 
     @property
@@ -90,6 +96,12 @@ class StateStore:
 
     @property
     def storage_migration_version(self) -> int:
+        """Phase 3 compatibility level; use database_migration_version for the actual head."""
+
+        return min(self.database_migration_version, 4)
+
+    @property
+    def database_migration_version(self) -> int:
         with self.read_connection() as connection:
             row = connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()
             return int(row[0]) if row is not None and row[0] is not None else 0
@@ -487,4 +499,55 @@ CREATE TABLE planned_runs (
     status TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+"""
+
+_MIGRATION_5 = """
+CREATE TABLE verifier_revisions (
+    verifier_id TEXT NOT NULL,
+    revision INTEGER NOT NULL,
+    verifier_type TEXT NOT NULL,
+    manifest_json TEXT NOT NULL,
+    manifest_hash TEXT NOT NULL,
+    source_hash TEXT NOT NULL,
+    tests_hash TEXT NOT NULL,
+    fixtures_hash TEXT,
+    source_path TEXT NOT NULL,
+    tests_path TEXT NOT NULL,
+    fixtures_path TEXT,
+    lifecycle TEXT NOT NULL,
+    permission_summary TEXT NOT NULL,
+    confirmation_message_id TEXT,
+    created_at TEXT NOT NULL,
+    frozen_at TEXT,
+    PRIMARY KEY(verifier_id, revision)
+);
+
+CREATE TABLE verifier_lifecycle_evidence (
+    evidence_id TEXT PRIMARY KEY,
+    verifier_id TEXT NOT NULL,
+    revision INTEGER NOT NULL,
+    lifecycle TEXT NOT NULL,
+    result_json TEXT NOT NULL,
+    artifact_id TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(verifier_id, revision) REFERENCES verifier_revisions(verifier_id, revision)
+);
+
+CREATE TABLE contract_verifier_bindings (
+    contract_id TEXT NOT NULL,
+    contract_revision INTEGER NOT NULL,
+    verifier_id TEXT NOT NULL,
+    verifier_revision INTEGER NOT NULL,
+    hashes_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY(contract_id, contract_revision, verifier_id),
+    FOREIGN KEY(verifier_id, verifier_revision)
+      REFERENCES verifier_revisions(verifier_id, revision)
+);
+
+ALTER TABLE external_handles ADD COLUMN verifier_id TEXT;
+ALTER TABLE external_handles ADD COLUMN verifier_revision INTEGER;
+ALTER TABLE external_handles ADD COLUMN cancel_state TEXT;
+ALTER TABLE external_handles ADD COLUMN report_artifact_id TEXT;
+ALTER TABLE external_handles ADD COLUMN residual_effect TEXT;
 """

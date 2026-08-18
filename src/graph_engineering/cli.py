@@ -22,8 +22,10 @@ from .schema import export_schemas
 app = typer.Typer(help="Graph Engineering protocol tools.", no_args_is_help=True)
 graph_app = typer.Typer(help="Static Execution Graph tools.", no_args_is_help=True)
 schema_app = typer.Typer(help="JSON Schema tools.", no_args_is_help=True)
+verifier_app = typer.Typer(help="Dynamic Verifier lifecycle tools.", no_args_is_help=True)
 app.add_typer(graph_app, name="graph")
 app.add_typer(schema_app, name="schema")
+app.add_typer(verifier_app, name="verifier")
 
 
 def _write_immutable(path: Path, content: str) -> None:
@@ -180,6 +182,119 @@ def _load_document(path: Path) -> Any:
     if path.suffix.lower() == ".json":
         return json.loads(text)
     return yaml.safe_load(text)
+
+
+@verifier_app.command("list")
+def verifier_list() -> None:
+    """List registered MVP Verifier types."""
+
+    from graph_engineering.verifier import builtin_registry
+
+    for verifier_type in builtin_registry().types():
+        typer.echo(verifier_type)
+
+
+@verifier_app.command("validate")
+def verifier_validate(
+    path: Path,
+    state_db: Annotated[
+        Path | None, typer.Option(help="Optionally stage validation evidence.")
+    ] = None,
+    source: Annotated[Path | None, typer.Option()] = None,
+    tests: Annotated[Path | None, typer.Option()] = None,
+    fixtures: Annotated[Path | None, typer.Option()] = None,
+) -> None:
+    """Validate a Verifier Manifest without executing it."""
+
+    from pydantic import ValidationError
+
+    from graph_engineering.verifier import VerifierManifest
+
+    try:
+        manifest = VerifierManifest.model_validate(_load_document(path))
+    except (OSError, ValueError, ValidationError) as exc:
+        typer.echo(f"Invalid Verifier Manifest: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(
+        f"Valid Verifier Manifest: {manifest.verifier_id} r{manifest.revision} "
+        f"({manifest.verifier_type})"
+    )
+    if state_db is not None:
+        if source is None or tests is None:
+            raise typer.BadParameter("--source and --tests are required with --state-db")
+        from graph_engineering.runtime import StateStore
+        from graph_engineering.verifier import VerifierLifecycle, VerifierRepository
+
+        repository = VerifierRepository(StateStore(state_db))
+        repository.stage(manifest, source=source, tests=tests, fixtures=fixtures)
+        repository.record(
+            manifest.verifier_id,
+            manifest.revision,
+            VerifierLifecycle.VALIDATED,
+            {"passed": True, "command": "ge verifier validate"},
+        )
+
+
+@verifier_app.command("permissions")
+def verifier_permissions(path: Path) -> None:
+    """Render the exact Human permission summary used before freeze."""
+
+    from graph_engineering.verifier import VerifierManifest, VerifierRepository
+
+    manifest = VerifierManifest.model_validate(_load_document(path))
+    typer.echo(VerifierRepository.permission_summary(manifest))
+
+
+def _lifecycle_evidence(
+    state_db: Path, verifier_id: str, revision: int, evidence: Path, lifecycle: str
+) -> None:
+    from graph_engineering.runtime import StateStore
+    from graph_engineering.verifier import VerifierLifecycle, VerifierRepository
+
+    result = _load_document(evidence)
+    if not isinstance(result, dict):
+        raise typer.BadParameter("evidence must be a JSON/YAML object")
+    repository = VerifierRepository(StateStore(state_db))
+    repository.record(verifier_id, revision, VerifierLifecycle(lifecycle), dict(result))
+    typer.echo(f"Verifier {verifier_id} r{revision} recorded {lifecycle} evidence")
+
+
+@verifier_app.command("test")
+def verifier_test(state_db: Path, verifier_id: str, revision: int, evidence: Path) -> None:
+    """Record passed deterministic test evidence for a validated revision."""
+
+    _lifecycle_evidence(state_db, verifier_id, revision, evidence, "tested")
+
+
+@verifier_app.command("dry-run")
+def verifier_dry_run(state_db: Path, verifier_id: str, revision: int, evidence: Path) -> None:
+    """Record passed isolated dry-run evidence for a tested revision."""
+
+    _lifecycle_evidence(state_db, verifier_id, revision, evidence, "dry_run")
+
+
+@verifier_app.command("freeze")
+def verifier_freeze(
+    state_db: Path,
+    verifier_id: str,
+    revision: int,
+    contract_id: str,
+    contract_revision: int,
+    confirmation_message_id: str,
+) -> None:
+    """Freeze a dry-run revision after explicit Human confirmation."""
+
+    from graph_engineering.runtime import StateStore
+    from graph_engineering.verifier import VerifierRepository
+
+    hashes = VerifierRepository(StateStore(state_db)).freeze(
+        verifier_id,
+        revision,
+        contract_id=contract_id,
+        contract_revision=contract_revision,
+        confirmation_message_id=confirmation_message_id,
+    )
+    typer.echo(hashes.model_dump_json())
 
 
 def _format_location(location: tuple[int | str, ...]) -> str:

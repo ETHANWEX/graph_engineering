@@ -8,7 +8,7 @@ import uuid
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Protocol, cast
 
 from graph_engineering.models.common import (
     Artifact,
@@ -56,7 +56,7 @@ from graph_engineering.models.results import (
 from .artifacts import ArtifactStore
 from .errors import RecoveryError, RuntimeInvariantError
 from .events import EventStore
-from .fakes import FakeExecutor, FakeVerifier
+from .fakes import FakeExecutor
 from .store import StateStore, timestamp, utc_now
 from .types import RunSnapshot
 
@@ -69,6 +69,19 @@ class _BudgetExhausted(RuntimeError):
     pass
 
 
+class RuntimeVerifier(Protocol):
+    def execute(
+        self,
+        run_id: str,
+        node: Node,
+        attempt_id: str,
+        *,
+        idempotency_key: str | None = None,
+    ) -> VerifierResult: ...
+
+    def query(self, handle: str) -> VerifierResult: ...
+
+
 class GraphRuntime:
     """A synchronous serial scheduler around deterministic Fake boundaries."""
 
@@ -77,7 +90,7 @@ class GraphRuntime:
         root: Path,
         *,
         executor: FakeExecutor,
-        verifier: FakeVerifier,
+        verifier: RuntimeVerifier,
         clock: Callable[[], datetime] = utc_now,
     ) -> None:
         self.root = root
@@ -475,6 +488,12 @@ class GraphRuntime:
                 payload={"intent_id": intent.intent_id},
             )
         self.events.flush(self.state)
+        if (
+            isinstance(intent, StateChangeControlIntent)
+            and intent.action is StateChangeAction.INTERRUPT
+            and changed
+        ):
+            self._cancel_external_handles(intent.run_id)
         return ControlActionResult(
             schema_version="1.0",
             intent_id=intent.intent_id,
@@ -483,6 +502,82 @@ class GraphRuntime:
             resulting_run_status=self._run_status(intent.run_id).value,
             message=message,
         )
+
+    def _cancel_external_handles(self, run_id: str) -> None:
+        with self.state.read_connection() as connection:
+            rows = list(
+                connection.execute(
+                    "SELECT node_id, handle, verifier_id, verifier_revision "
+                    "FROM external_handles WHERE run_id = ? "
+                    "AND handle IS NOT NULL AND trigger_state = 'checkpointed'",
+                    (run_id,),
+                )
+            )
+        cancel = getattr(self.verifier, "cancel", None)
+        cancel_for = getattr(self.verifier, "cancel_for", None)
+        for row in rows:
+            handle = str(row["handle"])
+            cancel_state = "unsupported"
+            residual: str | None = (
+                "external handle cancellation is unsupported; effect may continue"
+            )
+            if callable(cancel_for) and row["verifier_id"] is not None:
+                try:
+                    outcome = cancel_for(
+                        str(row["verifier_id"]),
+                        int(row["verifier_revision"]),
+                        handle,
+                    )
+                    result = outcome.result if hasattr(outcome, "result") else outcome
+                    if (
+                        isinstance(result, VerifierResult)
+                        and result.status is VerifierStatus.CANCELLED
+                    ):
+                        cancel_state = "cancelled"
+                        residual = None
+                    else:
+                        cancel_state = "unknown"
+                        residual = (
+                            "external handle cancellation result is unknown; effect may continue"
+                        )
+                except Exception:
+                    cancel_state = "unknown"
+                    residual = "external handle cancellation raised an error; effect may continue"
+            elif callable(cancel):
+                try:
+                    outcome = cancel(handle)
+                    result = outcome.result if hasattr(outcome, "result") else outcome
+                    if (
+                        isinstance(result, VerifierResult)
+                        and result.status is VerifierStatus.CANCELLED
+                    ):
+                        cancel_state = "cancelled"
+                        residual = None
+                    else:
+                        cancel_state = "unknown"
+                        residual = (
+                            "external handle cancellation result is unknown; effect may continue"
+                        )
+                except Exception:
+                    cancel_state = "unknown"
+                    residual = "external handle cancellation raised an error; effect may continue"
+            with self.state.transaction() as connection:
+                connection.execute(
+                    "UPDATE external_handles SET cancel_state = ?, residual_effect = ?, "
+                    "updated_at = ? WHERE run_id = ? AND node_id = ?",
+                    (cancel_state, residual, timestamp(), run_id, str(row["node_id"])),
+                )
+                self._checkpoint(connection, run_id, "external_handle_cancelled")
+                self.state.enqueue_event(
+                    connection,
+                    "verifier.cancelled"
+                    if cancel_state == "cancelled"
+                    else "verifier.cancel_unknown",
+                    run_id,
+                    node_id=str(row["node_id"]),
+                    payload={"cancel_state": cancel_state, "residual_effect": residual},
+                )
+        self.events.flush(self.state)
 
     def snapshot(self, run_id: str) -> RunSnapshot:
         with self.state.read_connection() as connection:
@@ -685,14 +780,22 @@ class GraphRuntime:
                 connection.execute(
                     """
                     INSERT INTO external_handles(
-                        run_id, node_id, idempotency_key, trigger_state, updated_at
-                    ) VALUES (?, ?, ?, 'triggering', ?)
+                        run_id, node_id, idempotency_key, trigger_state, updated_at,
+                        verifier_id, verifier_revision
+                    ) VALUES (?, ?, ?, 'triggering', ?, ?, ?)
                     ON CONFLICT(run_id, node_id) DO UPDATE SET
                         idempotency_key = excluded.idempotency_key,
                         trigger_state = 'triggering', handle = NULL,
                         updated_at = excluded.updated_at
                     """,
-                    (run_id, node.node_id, f"{run_id}:{node.node_id}", self._timestamp()),
+                    (
+                        run_id,
+                        node.node_id,
+                        f"{run_id}:{node.node_id}",
+                        self._timestamp(),
+                        str(node.config.get("verifier_id", node.node_id)),
+                        int(node.config.get("verifier_revision", 1)),
+                    ),
                 )
             self._checkpoint(connection, run_id, "attempt_started")
             self.state.enqueue_event(
@@ -789,7 +892,8 @@ class GraphRuntime:
     def _continue_external(self, run_id: str, node: Node) -> None:
         with self.state.read_connection() as connection:
             handle_row = connection.execute(
-                "SELECT handle FROM external_handles WHERE run_id = ? AND node_id = ?",
+                "SELECT handle, verifier_id, verifier_revision FROM external_handles "
+                "WHERE run_id = ? AND node_id = ?",
                 (run_id, node.node_id),
             ).fetchone()
             attempt = connection.execute(
@@ -800,7 +904,15 @@ class GraphRuntime:
         if handle_row is None or handle_row["handle"] is None or attempt is None:
             self._finish_uncertain_external_effect(run_id, node.node_id)
             return
-        result = self.verifier.query(str(handle_row["handle"]))
+        query_for = getattr(self.verifier, "query_for", None)
+        if callable(query_for) and handle_row["verifier_id"] is not None:
+            result = query_for(
+                str(handle_row["verifier_id"]),
+                int(handle_row["verifier_revision"]),
+                str(handle_row["handle"]),
+            )
+        else:
+            result = self.verifier.query(str(handle_row["handle"]))
         self._persist_result(run_id, node, str(attempt["attempt_id"]), result)
         if result.status is not VerifierStatus.PENDING:
             self._honor_barrier_after_result(run_id)
