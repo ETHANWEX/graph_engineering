@@ -23,9 +23,64 @@ app = typer.Typer(help="Graph Engineering protocol tools.", no_args_is_help=True
 graph_app = typer.Typer(help="Static Execution Graph tools.", no_args_is_help=True)
 schema_app = typer.Typer(help="JSON Schema tools.", no_args_is_help=True)
 verifier_app = typer.Typer(help="Dynamic Verifier lifecycle tools.", no_args_is_help=True)
+service_app = typer.Typer(help="Local Runtime Service lifecycle.", no_args_is_help=True)
 app.add_typer(graph_app, name="graph")
 app.add_typer(schema_app, name="schema")
 app.add_typer(verifier_app, name="verifier")
+app.add_typer(service_app, name="service")
+
+
+@service_app.command("start")
+def service_start(
+    project_root: Annotated[
+        Path, typer.Option("--project-root", exists=True, file_okay=False, resolve_path=True)
+    ] = Path("."),
+    project_id: Annotated[str, typer.Option("--project-id")] = "project",
+) -> None:
+    """Run the single-project Runtime Service in the foreground."""
+
+    from graph_engineering.service import RuntimeService
+
+    RuntimeService(project_root, project_id).serve()
+
+
+@service_app.command("status")
+def service_status(
+    project_root: Annotated[
+        Path, typer.Option("--project-root", exists=True, file_okay=False, resolve_path=True)
+    ] = Path("."),
+) -> None:
+    """Read Runtime Service health and version compatibility."""
+
+    from graph_engineering.service import ServiceClient
+
+    typer.echo(json.dumps(ServiceClient(project_root).call("health"), sort_keys=True))
+
+
+@service_app.command("stop")
+def service_stop(
+    project_root: Annotated[
+        Path, typer.Option("--project-root", exists=True, file_okay=False, resolve_path=True)
+    ] = Path("."),
+) -> None:
+    """Request authenticated controlled shutdown."""
+
+    from graph_engineering.service import ServiceClient
+
+    typer.echo(json.dumps(ServiceClient(project_root).call("shutdown"), sort_keys=True))
+
+
+@app.command("mcp-server")
+def mcp_server_command(
+    project_root: Annotated[
+        Path, typer.Option("--project-root", exists=True, file_okay=False, resolve_path=True)
+    ] = Path("."),
+) -> None:
+    """Serve the five Graph Engineering MCP tools over stdio."""
+
+    from graph_engineering.mcp_server import run_mcp_server
+
+    run_mcp_server(project_root)
 
 
 def _delivery_paths(run_id: str, state_db: Path | None) -> tuple[Path, Path, Path]:

@@ -2,15 +2,14 @@
 
 Graph Engineering 是一个面向自治软件开发的图工程控制层。Human 通过自然语言定义需求和授权边界、随时查询或中断开发，并最终验收成果；Graph Runtime 在冻结的 Contract 内组织 Coding Agent、确定性工具、Verifier、反馈循环和外部系统，持续完成实现、验证、修复、审查与证据交付。
 
-> 当前状态：Human 批准的 Phase 2、3、4 已按顺序进入远端 `main`。Phase 5 从精确
-> `origin/main=8adf9e2760cc525a613c3eb27fd0835d77525a9c` 创建独立分支
-> `phase/5-review-github-delivery`，已完成多维 Review、requirement matrix、GitHub provider
-> 和所有终态交付，并经 Human 授权提交、推送。真实 PR、合并、main 修改、自动合并及
-> Phase 6 均未获授权。
+> 当前状态：Phase 0–5 已进入远端 `main`。Phase 6A 正在长期分支
+> `phase/6-enhancements` 上实现并验证独立 Runtime Service、本地 IPC、MCP Server 和仓库内
+> Codex Plugin。Human 已于 2026-08-19 批准创建本地 Phase 6A delivery commit；尚未授权推送、
+> 创建 PR、修改/合并 main 或安装 Plugin。Phase 6B 尚未开始，将在新对话中按交接指令启动。
 
 ## 已实现能力
 
-Phase 0–5 当前工作树提供：
+Phase 0–6A 当前工作树提供：
 
 - Python 3.12+、Pydantic v2 和 Typer 的可安装 `src` layout 包。
 - 版本化 Task Contract、Execution Graph、Result、Control、Run 关系和 Report 协议。
@@ -69,8 +68,16 @@ Phase 0–5 当前工作树提供：
 - 所有终态的十文件版本化 delivery bundle、只读 `ge report`，以及经 HumanMessage、Intent
   Compiler 和确认策略的 `ge accept` / `ge reject`；accept 永不 merge。
 - SQLite migration 6 与 Phase 0–4 compatibility views；公共 Schema 1.0 仍为 30 个且无变化。
-- 156 个 pytest 测试（152 passed / 4 个真实 Codex 测试默认跳过）；Phase 0–4 的
-  135 collected / 132 passed / 3 skipped 基线保持。
+- 171 个 pytest 测试（167 passed / 4 个真实 Codex 测试默认跳过）；启动时 Phase 0–5 的
+  156 collected / 152 passed / 4 skipped 基线保持。
+- Phase 6A foreground Runtime Service、私有 project-local endpoint、health/version 和受控停止；
+  Windows 子进程退出与 Runtime 重启后从 SQLite 恢复 Conversation/Run 路由。
+- versioned/authenticated loopback IPC、project/workspace/request/idempotency identity、typed error、
+  有限 frame/timeout/retry，以及 mutation replay ledger；查询路径不写 Runtime 状态。
+- `ge mcp-server` 的 `start/message/confirm/status/report` 五个严格工具；全部复用 Human Gateway、
+  HumanMessage、Intent Compiler、确认策略、强类型 Runtime control 和只读 report/status API。
+- 仓库内 `plugins/graph-engineering` Codex Plugin（manifest、Skill、MCP config）；它不保存权威
+  Run 状态，也不直接写 SQLite/worktree/external handle。
 
 开发安装：
 
@@ -83,6 +90,10 @@ python -m venv .venv
 
 ```powershell
 ge start --project-root .
+ge service start --project-root . --project-id project
+ge service status --project-root .
+ge service stop --project-root .
+ge mcp-server --project-root .
 ge report <run-id>
 ge accept <run-id>
 ge reject <run-id> --reason "..."
@@ -262,7 +273,8 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 - 已合并阶段：Phase 0–5；Phase 5 通过 PR #6 进入 `origin/main`，实现/交接提交为
   `db7dd54` / `4ebeb2d`。
 - 当前分支：`phase/6-enhancements`，基线为
-  `eedc46d1a607c6169cb43eca79ef56bdd137efac`；仅准备 Phase 6 路线，功能开发尚未开始。
+  `51fad9e05c4b4d68f25d9c8bd1d269dcb0cd129f`；Phase 6A 已获 Human Review 批准并形成独立
+  本地 delivery commit，尚未推送。
 - Phase 6 使用单一长期分支，6A–6N 以独立阶段提交迭代；Claude Code 暂未排期。
 - 当前未授权：Phase 6 功能提交/推送、Graph Engineering PR、main 修改、merge 或 auto-merge。
 - GitHub CLI 2.97.0 已安装，`pr`、`run`、`api` 命令入口可用；当前未登录任何 GitHub host，
@@ -282,6 +294,7 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 - Phase 5 范围：[docs/phases/phase-5.md](docs/phases/phase-5.md)
 - Phase 5 交接：[docs/phases/phase-5-handoff.md](docs/phases/phase-5-handoff.md)
 - Phase 6 总路线：[docs/phases/phase-6.md](docs/phases/phase-6.md)
+- Phase 6A 范围：[docs/phases/phase-6a.md](docs/phases/phase-6a.md)
 - Phase 6A 启动 Prompt：[docs/prompts/phase-6a-start.md](docs/prompts/phase-6a-start.md)
 - 协作约定：[AGENTS.md](AGENTS.md)
 

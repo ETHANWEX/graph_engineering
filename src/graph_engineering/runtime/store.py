@@ -86,6 +86,12 @@ class StateStore:
                     "INSERT INTO schema_migrations(version, applied_at) VALUES (6, ?)",
                     (timestamp(),),
                 )
+            if 7 not in applied:
+                connection.executescript(_MIGRATION_7)
+                connection.execute(
+                    "INSERT INTO schema_migrations(version, applied_at) VALUES (7, ?)",
+                    (timestamp(),),
+                )
             connection.commit()
 
     @property
@@ -114,7 +120,13 @@ class StateStore:
 
     @property
     def delivery_migration_version(self) -> int:
-        """Actual storage head including Phase 5 delivery tables."""
+        """Compatibility level through Phase 5; use service_migration_version for head."""
+
+        return min(self.service_migration_version, 6)
+
+    @property
+    def service_migration_version(self) -> int:
+        """Actual storage head including Phase 6A service tables."""
 
         with self.read_connection() as connection:
             row = connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()
@@ -665,5 +677,24 @@ CREATE TABLE human_acceptance_records (
     new_contract_revision INTEGER,
     new_run_id TEXT,
     created_at TEXT NOT NULL
+);
+"""
+
+_MIGRATION_7 = """
+ALTER TABLE pending_confirmations ADD COLUMN actor_id TEXT;
+ALTER TABLE pending_confirmations ADD COLUMN project_id TEXT;
+ALTER TABLE pending_confirmations ADD COLUMN protocol_major INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE pending_confirmations ADD COLUMN expires_at TEXT;
+
+CREATE TABLE ipc_mutation_replays (
+    idempotency_key TEXT PRIMARY KEY,
+    request_fingerprint TEXT NOT NULL,
+    project_id TEXT NOT NULL,
+    workspace_id TEXT NOT NULL,
+    operation TEXT NOT NULL,
+    response_json TEXT,
+    state TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    completed_at TEXT
 );
 """

@@ -1,0 +1,19 @@
+{
+  "name": "graph-engineering",
+  "version": "0.1.0",
+  "description": "Persistent Graph Engineering Runtime control through a local MCP server",
+  "author": {
+    "name": "Graph Engineering contributors"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Graph Engineering",
+    "shortDescription": "Control persistent Graph Engineering Runs.",
+    "longDescription": "A thin Codex entry point for the project-owned Graph Engineering Runtime Service. Requires Codex CLI 0.147.0+, graph-engineering 0.7.x, and compatible Runtime API, IPC, and MCP tool major versions.",
+    "developerName": "Graph Engineering contributors",
+    "category": "Productivity",
+    "capabilities": ["MCP", "Skills"],
+    "defaultPrompt": "Use the Graph Engineering Skill and its MCP tools to work through the persistent Human Control Conversation."
+  },
+  "mcpServers": "./.mcp.json"
+}

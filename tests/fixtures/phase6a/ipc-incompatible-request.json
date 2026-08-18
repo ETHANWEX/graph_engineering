@@ -1,0 +1,10 @@
+{
+  "protocol_version": "2.0",
+  "request_id": "request:fixture-incompatible",
+  "idempotency_key": "idempotency:fixture-incompatible",
+  "project_id": "project",
+  "workspace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "operation": "health",
+  "authorization": "fixture-capability-not-a-real-secret-0001",
+  "payload": {}
+}
