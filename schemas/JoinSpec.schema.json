@@ -1,0 +1,22 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "parallel_node_id": {
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.-]+$",
+      "title": "Parallel Node Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "parallel_node_id"
+  ],
+  "title": "JoinSpec",
+  "type": "object"
+}

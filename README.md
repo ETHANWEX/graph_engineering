@@ -2,18 +2,18 @@
 
 Graph Engineering 是一个面向自治软件开发的图工程控制层。Human 通过自然语言定义需求和授权边界、随时查询或中断开发，并最终验收成果；Graph Runtime 在冻结的 Contract 内组织 Coding Agent、确定性工具、Verifier、反馈循环和外部系统，持续完成实现、验证、修复、审查与证据交付。
 
-> 当前状态：Phase 0–5 已进入远端 `main`。Phase 6A 正在长期分支
-> `phase/6-enhancements` 上实现并验证独立 Runtime Service、本地 IPC、MCP Server 和仓库内
-> Codex Plugin。Human 已于 2026-08-19 批准创建本地 Phase 6A delivery commit；尚未授权推送、
-> 创建 PR、修改/合并 main 或安装 Plugin。Phase 6B 尚未开始，将在新对话中按交接指令启动。
+> 当前状态：Phase 0–5 已进入远端 `main`，Phase 6A 已形成经 Human Review 批准的本地
+> delivery commit `55750075c7af208ebc508299752566a3f67eaeb5`。Phase 6B：Parallel Graphs
+> 已在长期分支 `phase/6-enhancements` 完成未提交实现并等待 Human Review；尚未授权 delivery commit、推送、
+> 创建 PR、修改/合并 main 或安装 Plugin。
 
 ## 已实现能力
 
-Phase 0–6A 当前工作树提供：
+Phase 0–6B 当前工作树提供：
 
 - Python 3.12+、Pydantic v2 和 Typer 的可安装 `src` layout 包。
 - 版本化 Task Contract、Execution Graph、Result、Control、Run 关系和 Report 协议。
-- 30 个提交到 `schemas/` 的公共 JSON Schema，以及稳定性测试。
+- 36 个工作树公共 JSON Schema，以及稳定性测试。
 - JSON/YAML Execution Graph 静态校验；错误包含字段路径并返回非零退出码。
 - 合法/非法 fixtures、36 个单元测试、mypy 严格类型检查和 Ruff 检查。
 - SQLite State Store（含迁移、事务状态机、checkpoint 和事件 outbox）。
@@ -78,6 +78,15 @@ Phase 0–6A 当前工作树提供：
   HumanMessage、Intent Compiler、确认策略、强类型 Runtime control 和只读 report/status API。
 - 仓库内 `plugins/graph-engineering` Codex Plugin（manifest、Skill、MCP config）；它不保存权威
   Run 状态，也不直接写 SQLite/worktree/external handle。
+- 强类型 `parallel`、显式 `subgraph` 与 `join` 节点；branch ID 和 join aggregate 不依赖完成顺序。
+- 有界本机并发、SQLite 原子共享调用/成本预算、durable branch/node/attempt/checkpoint 状态，
+  restart 跳过已完成工作并轮询 checkpointed external handle。
+- active/pending branch 的 pause、interrupt、cancel durable barrier；聚合按
+  `error > blocked > failed > cancelled > succeeded` fail closed。
+- SQLite migration 8 保持 migration 1–7 和 Phase 6A service compatibility 可读；串行 Graph
+  canonical SHA、Runtime Service、IPC、MCP 和 Plugin 行为保持兼容。
+- 187 个 pytest 测试（183 passed / 4 个真实 Codex 测试默认跳过）；mypy strict、Ruff、
+  36-schema drift、Graph CLI 和 migration 1–8 repeatability 全部通过。
 
 开发安装：
 
@@ -273,8 +282,8 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 - 已合并阶段：Phase 0–5；Phase 5 通过 PR #6 进入 `origin/main`，实现/交接提交为
   `db7dd54` / `4ebeb2d`。
 - 当前分支：`phase/6-enhancements`，基线为
-  `51fad9e05c4b4d68f25d9c8bd1d269dcb0cd129f`；Phase 6A 已获 Human Review 批准并形成独立
-  本地 delivery commit，尚未推送。
+  `55750075c7af208ebc508299752566a3f67eaeb5`；Phase 6B 已完成未提交实现并等待 Human Review，
+  Phase 6A delivery commit 尚未推送。
 - Phase 6 使用单一长期分支，6A–6N 以独立阶段提交迭代；Claude Code 暂未排期。
 - 当前未授权：Phase 6 功能提交/推送、Graph Engineering PR、main 修改、merge 或 auto-merge。
 - GitHub CLI 2.97.0 已安装，`pr`、`run`、`api` 命令入口可用；当前未登录任何 GitHub host，
@@ -296,6 +305,9 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 - Phase 6 总路线：[docs/phases/phase-6.md](docs/phases/phase-6.md)
 - Phase 6A 范围：[docs/phases/phase-6a.md](docs/phases/phase-6a.md)
 - Phase 6A 启动 Prompt：[docs/prompts/phase-6a-start.md](docs/prompts/phase-6a-start.md)
+- Phase 6B 范围：[docs/phases/phase-6b.md](docs/phases/phase-6b.md)
+- Phase 6B 交接：[docs/phases/phase-6b-handoff.md](docs/phases/phase-6b-handoff.md)
+- Phase 6C 启动 Prompt：[docs/prompts/phase-6c-start.md](docs/prompts/phase-6c-start.md)
 - 协作约定：[AGENTS.md](AGENTS.md)
 
 README 是项目对外的首要入口。每个阶段完成时都必须同步更新这里的架构、已实现能力、安装方式、示例命令和限制，避免 README 描述超前于代码。

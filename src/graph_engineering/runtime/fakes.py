@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -26,15 +27,17 @@ class FakeExecutor:
     def __init__(self, scripts: dict[str, list[ExecutorResult]] | None = None) -> None:
         self._scripts = {key: list(values) for key, values in (scripts or {}).items()}
         self.calls: list[FakeCall] = []
+        self._lock = threading.Lock()
         self.after_execute: Callable[[FakeCall], object] | None = None
 
     def execute(self, run_id: str, node: Node, attempt_id: str) -> ExecutorResult:
         call = FakeCall(run_id=run_id, node_id=node.node_id, attempt_id=attempt_id)
-        self.calls.append(call)
-        values = self._scripts.get(node.node_id)
-        if not values:
-            raise RuntimeError(f"no Fake Executor result scripted for {node.node_id}")
-        result = values.pop(0)
+        with self._lock:
+            self.calls.append(call)
+            values = self._scripts.get(node.node_id)
+            if not values:
+                raise RuntimeError(f"no Fake Executor result scripted for {node.node_id}")
+            result = values.pop(0)
         if self.after_execute is not None:
             self.after_execute(call)
         return result
@@ -50,6 +53,7 @@ class FakeVerifier:
         self._scripts = {key: list(values) for key, values in (scripts or {}).items()}
         self._query_results = {key: list(values) for key, values in (query_results or {}).items()}
         self.calls: list[FakeCall] = []
+        self._lock = threading.Lock()
         self.trigger_count = 0
         self.query_count = 0
         self.after_execute: Callable[[FakeCall], object] | None = None
@@ -63,13 +67,14 @@ class FakeVerifier:
         idempotency_key: str | None = None,
     ) -> VerifierResult:
         call = FakeCall(run_id, node.node_id, attempt_id, idempotency_key)
-        self.calls.append(call)
-        if idempotency_key is not None:
-            self.trigger_count += 1
-        values = self._scripts.get(node.node_id)
-        if not values:
-            raise RuntimeError(f"no Fake Verifier result scripted for {node.node_id}")
-        result = values.pop(0)
+        with self._lock:
+            self.calls.append(call)
+            if idempotency_key is not None:
+                self.trigger_count += 1
+            values = self._scripts.get(node.node_id)
+            if not values:
+                raise RuntimeError(f"no Fake Verifier result scripted for {node.node_id}")
+            result = values.pop(0)
         if self.after_execute is not None:
             self.after_execute(call)
         return result

@@ -92,6 +92,12 @@ class StateStore:
                     "INSERT INTO schema_migrations(version, applied_at) VALUES (7, ?)",
                     (timestamp(),),
                 )
+            if 8 not in applied:
+                connection.executescript(_MIGRATION_8)
+                connection.execute(
+                    "INSERT INTO schema_migrations(version, applied_at) VALUES (8, ?)",
+                    (timestamp(),),
+                )
             connection.commit()
 
     @property
@@ -126,7 +132,13 @@ class StateStore:
 
     @property
     def service_migration_version(self) -> int:
-        """Actual storage head including Phase 6A service tables."""
+        """Compatibility level through Phase 6A; use parallel_migration_version for head."""
+
+        return min(self.parallel_migration_version, 7)
+
+    @property
+    def parallel_migration_version(self) -> int:
+        """Actual storage head including Phase 6B parallel branch tables."""
 
         with self.read_connection() as connection:
             row = connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()
@@ -696,5 +708,79 @@ CREATE TABLE ipc_mutation_replays (
     state TEXT NOT NULL,
     created_at TEXT NOT NULL,
     completed_at TEXT
+);
+"""
+
+_MIGRATION_8 = """
+CREATE TABLE parallel_branches (
+    run_id TEXT NOT NULL REFERENCES runs(run_id),
+    container_node_id TEXT NOT NULL,
+    branch_id TEXT NOT NULL,
+    branch_order INTEGER NOT NULL,
+    subgraph_json TEXT NOT NULL,
+    subgraph_hash TEXT NOT NULL,
+    status TEXT NOT NULL,
+    current_node_id TEXT,
+    result_json TEXT,
+    started_at TEXT,
+    finished_at TEXT,
+    PRIMARY KEY(run_id, container_node_id, branch_id)
+);
+CREATE INDEX parallel_branches_schedulable
+ON parallel_branches(run_id, container_node_id, status, branch_order);
+
+CREATE TABLE parallel_branch_nodes (
+    run_id TEXT NOT NULL,
+    container_node_id TEXT NOT NULL,
+    branch_id TEXT NOT NULL,
+    node_id TEXT NOT NULL,
+    node_type TEXT NOT NULL,
+    status TEXT NOT NULL,
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    result_json TEXT,
+    route_resolved INTEGER NOT NULL DEFAULT 0,
+    first_started_at TEXT,
+    cost_units REAL NOT NULL DEFAULT 0,
+    repair_iterations INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY(run_id, container_node_id, branch_id, node_id),
+    FOREIGN KEY(run_id, container_node_id, branch_id)
+      REFERENCES parallel_branches(run_id, container_node_id, branch_id)
+);
+
+CREATE TABLE parallel_branch_attempts (
+    attempt_id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL,
+    container_node_id TEXT NOT NULL,
+    branch_id TEXT NOT NULL,
+    node_id TEXT NOT NULL,
+    attempt_number INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    result_json TEXT,
+    started_at TEXT NOT NULL,
+    finished_at TEXT,
+    UNIQUE(run_id, container_node_id, branch_id, node_id, attempt_number),
+    FOREIGN KEY(run_id, container_node_id, branch_id, node_id)
+      REFERENCES parallel_branch_nodes(run_id, container_node_id, branch_id, node_id)
+);
+
+CREATE TABLE parallel_branch_edge_traversals (
+    run_id TEXT NOT NULL,
+    container_node_id TEXT NOT NULL,
+    branch_id TEXT NOT NULL,
+    from_node TEXT NOT NULL,
+    to_node TEXT NOT NULL,
+    traversal_count INTEGER NOT NULL,
+    PRIMARY KEY(run_id, container_node_id, branch_id, from_node, to_node),
+    FOREIGN KEY(run_id, container_node_id, branch_id)
+      REFERENCES parallel_branches(run_id, container_node_id, branch_id)
+);
+
+CREATE TABLE shared_budget_reservations (
+    run_id TEXT NOT NULL REFERENCES runs(run_id),
+    reservation_id TEXT NOT NULL,
+    node_id TEXT,
+    cost_units REAL NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY(run_id, reservation_id)
 );
 """

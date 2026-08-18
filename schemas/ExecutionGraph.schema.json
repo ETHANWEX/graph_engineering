@@ -124,6 +124,28 @@
       "title": "Edge",
       "type": "object"
     },
+    "JoinSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "parallel_node_id": {
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Parallel Node Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "parallel_node_id"
+      ],
+      "title": "JoinSpec",
+      "type": "object"
+    },
     "Node": {
       "additionalProperties": false,
       "properties": {
@@ -143,6 +165,17 @@
           "title": "Config",
           "type": "object"
         },
+        "join": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JoinSpec"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "node_id": {
           "minLength": 1,
           "pattern": "^[A-Za-z0-9_.-]+$",
@@ -157,10 +190,32 @@
           "title": "Objective",
           "type": "string"
         },
+        "parallel": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ParallelSpec"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "schema_version": {
           "const": "1.0",
           "title": "Schema Version",
           "type": "string"
+        },
+        "subgraph": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Subgraph"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -178,10 +233,70 @@
         "command",
         "verifier",
         "router",
-        "delivery"
+        "delivery",
+        "parallel",
+        "subgraph",
+        "join"
       ],
       "title": "NodeType",
       "type": "string"
+    },
+    "ParallelBranch": {
+      "additionalProperties": false,
+      "properties": {
+        "branch_id": {
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Branch Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "subgraph": {
+          "$ref": "#/$defs/Subgraph"
+        }
+      },
+      "required": [
+        "schema_version",
+        "branch_id",
+        "subgraph"
+      ],
+      "title": "ParallelBranch",
+      "type": "object"
+    },
+    "ParallelSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "branches": {
+          "items": {
+            "$ref": "#/$defs/ParallelBranch"
+          },
+          "minItems": 2,
+          "title": "Branches",
+          "type": "array"
+        },
+        "max_concurrency": {
+          "maximum": 64,
+          "minimum": 1,
+          "title": "Max Concurrency",
+          "type": "integer"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "max_concurrency",
+        "branches"
+      ],
+      "title": "ParallelSpec",
+      "type": "object"
     },
     "RouteCondition": {
       "additionalProperties": false,
@@ -256,6 +371,50 @@
       ],
       "title": "RouteOperator",
       "type": "string"
+    },
+    "Subgraph": {
+      "additionalProperties": false,
+      "properties": {
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/Edge"
+          },
+          "title": "Edges",
+          "type": "array"
+        },
+        "entry_node_id": {
+          "minLength": 1,
+          "title": "Entry Node Id",
+          "type": "string"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/Node"
+          },
+          "minItems": 1,
+          "title": "Nodes",
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "subgraph_id": {
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Subgraph Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "subgraph_id",
+        "entry_node_id",
+        "nodes"
+      ],
+      "title": "Subgraph",
+      "type": "object"
     }
   },
   "additionalProperties": false,

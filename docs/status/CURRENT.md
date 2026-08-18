@@ -2,11 +2,15 @@
 
 ## 当前阶段
 
-Phase 6A 实现与本地验收已完成，并于 2026-08-19 通过 Human Review，获准在
-`phase/6-enhancements` 创建唯一的本地 Phase 6A delivery commit。其基线是 Phase 6 路线提交
-`51fad9e05c4b4d68f25d9c8bd1d269dcb0cd129f`。尚未授权推送、创建 PR、修改/合并 main、安装或
-发布 Plugin、修改个人 Codex marketplace/config。Phase 6B 尚未开始，应在新对话中按启动 Prompt
-重新执行门禁检查后开始。
+Phase 6B：Parallel Graphs 已在 `phase/6-enhancements` 完成未提交实现，正在等待 Human Review。
+Phase 6A 已于 2026-08-19
+通过 Human Review，其本地 delivery commit 是
+`55750075c7af208ebc508299752566a3f67eaeb5`，parent 为
+`51fad9e05c4b4d68f25d9c8bd1d269dcb0cd129f`。Phase 6B 启动门禁已通过：分支与 HEAD
+精确匹配、tracked/untracked 清洁、远端无 Phase 6 分支；Phase 0–6A baseline 为
+171 collected / 167 passed / 4 skipped。当前 Phase 0–6B full regression 为
+187 collected / 183 passed / 4 skipped。尚未授权 Phase 6B delivery commit、推送、创建 PR、
+修改/合并 main、安装或发布 Plugin、修改个人 Codex marketplace/config。
 
 ## 已核实 baseline 与集成顺序
 
@@ -35,7 +39,8 @@ Phase 6A 实现与本地验收已完成，并于 2026-08-19 通过 Human Review�
   `start/message/confirm/status/report`，不直接访问 SQLite/worktree。
 - 仓库内 `plugins/graph-engineering` 包含有效 manifest、Graph Engineering Skill、MCP config 和
   兼容/工作流说明；不持有权威 Run 状态。未安装、未发布、未修改个人配置。
-- Phase 6B、Claude Code、并行图、容器、OpenTelemetry、UI、分布式 Worker 和自动合并未实现。
+- Phase 6A delivery 时尚未实现 Phase 6B、Claude Code、容器、OpenTelemetry、UI、分布式
+  Worker 和自动合并；本工作树仅新增 Phase 6B Parallel Graphs。
 
 ## 验证
 
@@ -43,7 +48,8 @@ Phase 6A 实现与本地验收已完成，并于 2026-08-19 通过 Human Review�
   export/drift、Graph/Verifier CLI、migration repeatability 全部退出 0。
 - Phase 6A focused：15 passed，覆盖 migration、service/IPC security/idempotency/version/expiry、
   read-only query、barrier、Windows subprocess/restart、MCP schemas/routing 和 repository Plugin。
-- 当前 full regression：171 collected / 167 passed / 4 skipped（真实 Codex tests 默认跳过）。
+- Phase 6A delivery full regression：171 collected / 167 passed / 4 skipped（真实 Codex tests
+  默认跳过）。
 - mypy strict、Ruff lint、Plugin validator 已退出 0；最终 format/Schema/CLI 分层证据见
   `docs/phases/phase-6a-handoff.md`。
 - 隔离 MCP stdio → real Runtime Service E2E 和 Windows service subprocess E2E 是确定性本地证据，
@@ -57,8 +63,19 @@ Phase 6A 实现与本地验收已完成，并于 2026-08-19 通过 Human Review�
 - 跨平台 Runtime/IPC/Plugin 行为未验证；Phase 6A 的进程与 endpoint 证据仅 Windows。
 - GitHub 未登录且未获真实 repository 写授权；没有产生 GitHub 或其他外部副作用。
 
-## 下一步
+## Phase 6B 未提交结果
 
-Phase 6A 本地 delivery commit 已获 Human 明确批准。下一对话读取 Phase 6A handoff 和
-`docs/prompts/phase-6b-start.md`，核实该 delivery commit、干净工作树和分支事实后开始 Phase 6B。
-推送仍需另行授权。
+- 权威范围：`docs/phases/phase-6.md` 与 `docs/phases/phase-6b.md`。
+- 已实现 parallel nodes、显式 subgraph、deterministic join、bounded concurrency、共享预算原子
+  协调、branch checkpoint/recovery，以及 active/pending branch durable barrier。
+- join 与 branch 完成顺序无关；聚合按 `error > blocked > failed > cancelled > succeeded`
+  fail closed。已完成 branch 与已 checkpoint 的 branch result 在 resume/restart 后不重复执行。
+- migration 8 保存 branch/node/attempt/edge traversal/shared reservation 状态；Phase 6A
+  `service_migration_version` compatibility 保持 7，实际 parallel head 为 8。
+- 公共 Schema 从 30 增至 36；旧串行 Graph canonical SHA 保持
+  `77b93993133ef786a481bb954db31c8ed4aca26fe54195cafbdaff36e7b3f267`。
+- Phase 6B focused：16 passed；最终 full regression：187 collected / 183 passed / 4 skipped。
+  mypy strict 123 files、Ruff lint/format、36-schema export/drift、旧/新 Graph CLI、migration 1–8
+  repeatability 全部通过，详见 `docs/phases/phase-6b-handoff.md`。
+- 现有串行 Graph、历史 SQLite、Runtime Service、IPC、MCP 和 Plugin 保持兼容。
+- Phase 6C 及后续能力仍未开始；结果保持未提交并等待 Human Review。

@@ -390,5 +390,5 @@
       "type": "object"
     }
   },
-  "$ref": "#/$defs/Node"
+  "$ref": "#/$defs/Subgraph"
 }

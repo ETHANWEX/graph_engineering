@@ -1,0 +1,38 @@
+schema_version: "1.0"
+graph_id: phase-6b-invalid-parallel
+contract:
+  schema_version: "1.0"
+  contract_id: contract-parallel
+  revision: 1
+entry_node_id: fanout
+nodes:
+  - schema_version: "1.0"
+    node_id: fanout
+    node_type: parallel
+    objective: Invalid duplicate branches
+    parallel:
+      schema_version: "1.0"
+      max_concurrency: 0
+      branches:
+        - schema_version: "1.0"
+          branch_id: duplicate
+          subgraph:
+            schema_version: "1.0"
+            subgraph_id: one
+            entry_node_id: nested
+            nodes:
+              - schema_version: "1.0"
+                node_id: nested
+                node_type: parallel
+                objective: Nested parallel is not Phase 6B
+        - schema_version: "1.0"
+          branch_id: duplicate
+          subgraph:
+            schema_version: "1.0"
+            subgraph_id: two
+            entry_node_id: work
+            nodes:
+              - schema_version: "1.0"
+                node_id: work
+                node_type: agent
+                objective: Work

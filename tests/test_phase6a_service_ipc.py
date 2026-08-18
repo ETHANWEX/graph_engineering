@@ -39,7 +39,8 @@ def test_migration_7_is_repeatable_and_preserves_phase5_compatibility(tmp_path: 
     with state.read_connection() as connection:
         versions = [row[0] for row in connection.execute("SELECT version FROM schema_migrations")]
         columns = {row[1] for row in connection.execute("PRAGMA table_info(pending_confirmations)")}
-    assert versions == list(range(1, 8))
+    assert versions == list(range(1, 9))
+    assert state.parallel_migration_version == 8
     assert {"actor_id", "project_id", "protocol_major", "expires_at"} <= columns
 
 
