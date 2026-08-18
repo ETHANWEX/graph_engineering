@@ -68,6 +68,12 @@ class StateStore:
                     "INSERT INTO schema_migrations(version, applied_at) VALUES (3, ?)",
                     (timestamp(),),
                 )
+            if 4 not in applied:
+                connection.executescript(_MIGRATION_4)
+                connection.execute(
+                    "INSERT INTO schema_migrations(version, applied_at) VALUES (4, ?)",
+                    (timestamp(),),
+                )
             connection.commit()
 
     @property
@@ -78,6 +84,12 @@ class StateStore:
 
     @property
     def latest_migration_version(self) -> int:
+        """Phase 2 compatibility level; use storage_migration_version for the database head."""
+
+        return min(self.storage_migration_version, 3)
+
+    @property
+    def storage_migration_version(self) -> int:
         with self.read_connection() as connection:
             row = connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()
             return int(row[0]) if row is not None and row[0] is not None else 0
@@ -358,5 +370,121 @@ CREATE TABLE verifier_executions (
     stderr_artifact_id TEXT,
     started_at TEXT NOT NULL,
     finished_at TEXT
+);
+"""
+
+_MIGRATION_4 = """
+CREATE TABLE conversations (
+    conversation_id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    actor_id TEXT NOT NULL,
+    active_run_id TEXT,
+    status TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE human_messages (
+    message_id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL REFERENCES conversations(conversation_id),
+    message_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX human_messages_conversation ON human_messages(conversation_id, created_at);
+
+CREATE TABLE intent_compilations (
+    compilation_id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL REFERENCES conversations(conversation_id),
+    source_message_id TEXT NOT NULL REFERENCES human_messages(message_id),
+    intent_json TEXT,
+    confidence REAL NOT NULL,
+    clarification TEXT,
+    status TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE pending_confirmations (
+    confirmation_id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL REFERENCES conversations(conversation_id),
+    intent_json TEXT NOT NULL,
+    status TEXT NOT NULL,
+    result_json TEXT,
+    created_at TEXT NOT NULL,
+    resolved_at TEXT
+);
+
+CREATE TABLE discovery_sessions (
+    session_id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL,
+    project_root TEXT NOT NULL,
+    state TEXT NOT NULL,
+    scan_json TEXT NOT NULL,
+    unknowns_json TEXT NOT NULL,
+    answers_json TEXT NOT NULL,
+    draft_json TEXT,
+    source_message_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE contract_drafts (
+    draft_id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL,
+    contract_id TEXT NOT NULL,
+    revision INTEGER NOT NULL,
+    contract_json TEXT NOT NULL,
+    contract_hash TEXT NOT NULL,
+    status TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(contract_id, revision, contract_hash)
+);
+
+CREATE TABLE contract_revisions (
+    contract_id TEXT NOT NULL,
+    revision INTEGER NOT NULL,
+    contract_json TEXT NOT NULL,
+    contract_hash TEXT NOT NULL,
+    confirmation_message_id TEXT NOT NULL,
+    frozen_at TEXT NOT NULL,
+    PRIMARY KEY(contract_id, revision),
+    UNIQUE(contract_hash)
+);
+
+CREATE TABLE acceptance_locks (
+    lock_id TEXT PRIMARY KEY,
+    contract_id TEXT NOT NULL,
+    contract_revision INTEGER NOT NULL,
+    contract_hash TEXT NOT NULL,
+    verifier_hashes_json TEXT NOT NULL,
+    confirmation_message_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(contract_id, contract_revision),
+    FOREIGN KEY(contract_id, contract_revision)
+      REFERENCES contract_revisions(contract_id, revision)
+);
+
+CREATE TABLE contract_deltas (
+    delta_id TEXT PRIMARY KEY,
+    contract_id TEXT NOT NULL,
+    source_revision INTEGER NOT NULL,
+    new_revision INTEGER NOT NULL,
+    delta_json TEXT NOT NULL,
+    confirmation_message_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(contract_id, new_revision)
+);
+
+CREATE TABLE planned_runs (
+    run_id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    contract_id TEXT NOT NULL,
+    contract_revision INTEGER NOT NULL,
+    graph_json TEXT NOT NULL,
+    graph_hash TEXT NOT NULL,
+    parent_run_id TEXT,
+    supersedes_run_id TEXT,
+    restart_from_json TEXT,
+    status TEXT NOT NULL,
+    created_at TEXT NOT NULL
 );
 """

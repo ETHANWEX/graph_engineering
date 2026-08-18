@@ -1,6 +1,7 @@
 """Persistent Phase 1 Graph Runtime public Python API."""
 
 from .artifacts import ArtifactStore
+from .barriers import PersistedBarrierGuard
 from .engine import GraphRuntime
 from .errors import RecoveryError, RuntimeInvariantError, TransitionError
 from .events import EventStore
@@ -16,6 +17,7 @@ __all__ = [
     "FakeExecutor",
     "FakeVerifier",
     "GraphRuntime",
+    "PersistedBarrierGuard",
     "RecoveryError",
     "RunSnapshot",
     "RuntimeInvariantError",

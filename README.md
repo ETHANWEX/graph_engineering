@@ -2,14 +2,14 @@
 
 Graph Engineering 是一个面向自治软件开发的图工程控制层。Human 通过自然语言定义需求和授权边界、随时查询或中断开发，并最终验收成果；Graph Runtime 在冻结的 Contract 内组织 Coding Agent、确定性工具、Verifier、反馈循环和外部系统，持续完成实现、验证、修复、审查与证据交付。
 
-> 当前状态：Phase 2（Codex Executor 与 Memory）已在开发分支实现并通过本地与真实 Codex
-> fixture 验证，等待 Human 审阅。现在可安装 provider-neutral Executor、Codex CLI Adapter、
-> Session/Context/Handoff、Git worktree、只读 Reviewer/Observer 和 Command Verifier；自然语言
-> Human Gateway、后台 daemon、HTTP/远程 CI、GitHub 和 Plugin/UI 尚未实现。
+> 当前状态：Phase 3（自然语言 Discovery 与 Contract 冻结）已在 stacked 分支
+> `phase/3-discovery-contract` 实现并完成本地与真实 Codex 验证，等待 Human 审阅。Phase 3
+> 基于已批准的 Phase 2 提交 `53df64c`；Phase 2 必须先于 Phase 3 集成。后台 daemon、
+> 动态/HTTP Verifier、远程 CI、GitHub 和 Plugin/UI 尚未实现。
 
 ## 已实现能力
 
-Phase 0–2 当前提供：
+Phase 0–3 当前提供：
 
 - Python 3.12+、Pydantic v2 和 Typer 的可安装 `src` layout 包。
 - 版本化 Task Contract、Execution Graph、Result、Control、Run 关系和 Report 协议。
@@ -32,7 +32,20 @@ Phase 0–2 当前提供：
 - 全新只读 Reviewer/Observer、Observer 执行指纹隔离和 review-fix→Verifier→fresh review 路由。
 - argv-only Command Verifier，区分 failed/error，并限制 timeout 与输出字节数。
 - SQLite migration 3：Executor Session、受控进程、review attempt 和 verifier execution 元数据。
-- 91 个 pytest 测试（62 个 Phase 0–1 回归和 29 个 Phase 2 测试；真实 Codex 测试默认跳过）。
+- `ge start` 持久 Human Control Conversation；所有自然语言先追加为不可变 `HumanMessage`。
+- fail-closed 意图编译：query/status/report 与 pause/resume/interrupt/revise/restart/accept/reject
+  保持协议类型隔离；歧义、低置信度、缺少目标或需确认动作不会直接进入 Runtime。
+- 确定性限长项目预扫描、未知项识别、多轮 Discovery、缺少测试方式的强制追问与重启恢复。
+- 结构化 Contract draft、风险/权限摘要、显式确认、acceptance lock 与不可覆盖的 frozen revision。
+- 结构化 Contract delta、append-only revision，以及新 Run 的 parent/supersedes/restart lineage。
+- frozen Contract 到标准串行 Execution Graph 的确定性编译，不执行模型文本或任意源码。
+- 自然语言 query 复用 fresh read-only Observer；pause/interrupt 使用统一持久化 barrier guard，
+  阻止新 Session、Verifier 和 worktree 写入。
+- Codex read-only structured Discovery Adapter；JSONL 保留在 Adapter，原始 stdout/stderr 进入
+  Artifact Store。SQLite migration 4 保存 Conversation、Discovery、confirmation、Contract 和
+  prepared Run 元数据。
+- 108 个 pytest 测试（62 个 Phase 0–1、29 个 Phase 2、17 个 Phase 3；两个真实 Codex 测试
+  默认跳过并分别显式验收）。
 
 开发安装：
 
@@ -41,16 +54,21 @@ python -m venv .venv
 .venv\Scripts\python -m pip install -e ".[dev]"
 ```
 
-当前 CLI 命令仍为：
+当前 CLI 主入口包括：
 
 ```powershell
+ge start --project-root .
 ge graph validate tests/fixtures/valid/graph.yaml
 ge schema export --output schemas
 ```
 
+`ge start` 可跨进程恢复同一 Conversation、Discovery unknown、Contract draft 和待确认状态。
+确认前不会创建 acceptance lock、Execution Graph Run 或 Implementer Session；确认后只准备冻结
+Contract 和标准 Graph，自治执行仍由显式 Runtime 集成启动。
+
 `graph validate` 只检查结构、节点引用和受限路由条件，不执行节点。开发和贡献命令见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
-Phase 1 Runtime 的确定性 API 保持兼容。Phase 2 新边界通过强类型 Python API 组合：
+Phase 1–2 Runtime 的确定性 API 保持兼容。Executor 边界仍通过强类型 Python API 组合：
 
 ```python
 from pathlib import Path
@@ -68,6 +86,10 @@ executor = DurableExecutorRuntime(adapter, SessionRepository(state), SessionPoli
 Adapter 固定 approval policy `never`，拒绝 dangerous bypass。Codex 0.147.0 的原生
 `exec review` 不兑现结构化最后消息，因此结构化 Reviewer 使用全新 read-only `codex exec`；
 此兼容事实记录于 ADR-008。
+
+官方 OpenAI 文档确认 `codex exec --json` 输出 JSONL 事件，`--output-schema` 约束最终响应，
+自动化应使用最小 sandbox 权限：<https://learn.chatgpt.com/docs/non-interactive-mode>。本机实际
+CLI help 和登录状态仍是 Adapter 的运行时事实来源。
 
 ## 为什么需要 Graph Engineering
 
@@ -207,12 +229,15 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 
 ## 当前开发状态
 
-- 已完成阶段：Phase 0–1 已由 Human 审阅并合并；Phase 2 在 `phase/2-codex-memory`
-  实现并完成验证，等待 Human 审阅，尚未提交或推送。
+- 已完成阶段：Phase 0–1 已由 Human 审阅并合并；Phase 2 已由 Human 批准并推送到
+  `origin/phase/2-codex-memory`，但因 PR 服务故障尚未合并；Phase 3 由 Human 授权从批准提交
+  `53df64c` stacked 开发，当前等待审阅且未提交、未推送。
 - 已实现边界：协议/Schema、持久串行 Runtime、Codex Adapter/Session、Context/Handoff、
   worktree、Reviewer/Observer、Command Verifier、真实 review-fix/interrupt fixture。
-- 尚未实现：自然语言 Human Gateway/Discovery、动态/HTTP Verifier、daemon、远程 CI、
-  GitHub PR、Plugin/MCP/UI、并行图或 Phase 3–6 能力。
+- 已实现边界新增：Human Conversation、Intent Compiler、Discovery、Contract Repository、
+  acceptance lock、Graph Compiler、prepared Run lineage 和 Codex Discovery Adapter。
+- 尚未实现：动态/HTTP Verifier、daemon、远程 CI、GitHub PR、Plugin/MCP/UI、并行图或
+  Phase 4–6 能力。
 - 当前设计：[DESIGN.md](DESIGN.md)
 - 跨对话状态：[docs/status/CURRENT.md](docs/status/CURRENT.md)
 - Phase 0 范围：[docs/phases/phase-0.md](docs/phases/phase-0.md)
@@ -221,6 +246,8 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 - Phase 1 交接：[docs/phases/phase-1-handoff.md](docs/phases/phase-1-handoff.md)
 - Phase 2 范围：[docs/phases/phase-2.md](docs/phases/phase-2.md)
 - Phase 2 交接：[docs/phases/phase-2-handoff.md](docs/phases/phase-2-handoff.md)
+- Phase 3 范围：[docs/phases/phase-3.md](docs/phases/phase-3.md)
+- Phase 3 交接：[docs/phases/phase-3-handoff.md](docs/phases/phase-3-handoff.md)
 - 协作约定：[AGENTS.md](AGENTS.md)
 
 README 是项目对外的首要入口。每个阶段完成时都必须同步更新这里的架构、已实现能力、安装方式、示例命令和限制，避免 README 描述超前于代码。

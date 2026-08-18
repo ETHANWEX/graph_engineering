@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -21,15 +22,24 @@ class GitWorkspace:
 
 
 class GitWorkspaceManager:
-    def __init__(self, repository: Path, control_root: Path) -> None:
+    def __init__(
+        self,
+        repository: Path,
+        control_root: Path,
+        *,
+        can_start: Callable[[], bool] | None = None,
+    ) -> None:
         self.repository = repository.resolve()
         self.control_root = control_root.resolve()
         self.control_root.mkdir(parents=True, exist_ok=True)
         self.worktrees_root = self.control_root.parent / "worktrees"
         self.worktrees_root.mkdir(parents=True, exist_ok=True)
+        self.can_start = can_start or (lambda: True)
         self._git("rev-parse", "--git-dir")
 
     def create(self, run_id: str, *, accepted_commit: str | None = None) -> GitWorkspace:
+        if not self.can_start():
+            raise WorkspaceError("persisted Run barrier forbids a worktree write")
         slug = re.sub(r"[^A-Za-z0-9_.-]+", "-", run_id).strip("-.")
         if not slug or slug != run_id:
             raise WorkspaceError("run_id is not safe for a branch/worktree path")
