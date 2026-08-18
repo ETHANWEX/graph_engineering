@@ -11,7 +11,8 @@
   Phase 3 is ancestor of Phase 4.
 - `phase/5-review-github-delivery` was created directly from `origin/main`; initial branch SHA,
   merge-base, and origin/main all returned the exact baseline above. Local main was not rewritten.
-- Current HEAD is still the baseline SHA. All Phase 5 work is uncommitted and unpushed for review.
+- Human authorized commit and push. Implementation commit `db7dd54` was pushed to
+  `origin/phase/5-review-github-delivery`; the delivery-metadata commit is the branch HEAD.
 
 ## Decisions and storage
 
@@ -96,7 +97,8 @@ and revise creates Run lineage through RunPlanner. Historical data is never upda
   `gh auth status` exits 1 because no GitHub host is authenticated, and no isolated real GitHub
   repository was authorized. Real GitHub E2E is unverified; no real PR was created or updated.
 - Historical pytest basetemp ACL directories and ignored `.local` evidence were preserved.
-- No commit, push, Graph Engineering PR, main mutation, merge, auto-merge, or Phase 6 work occurred.
+- The authorized Phase 5 commits were pushed. No Graph Engineering PR, main mutation, merge,
+  auto-merge, or Phase 6 work occurred.
 
-Next step: Human reviews the uncommitted Phase 5 branch. Only explicit follow-up approval may
-authorize commit/push. Integration and any real GitHub test remain separate decisions.
+Next step: Human reviews the pushed Phase 5 commits and chooses the integration path. Integration,
+any real GitHub test, and Phase 6 remain separate decisions requiring explicit authorization.

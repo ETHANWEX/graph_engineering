@@ -2,9 +2,9 @@
 
 ## 当前阶段
 
-Phase 5：Review、GitHub 与交付已在 `phase/5-review-github-delivery` 完成实现和验证，等待 Human
-审阅。分支创建自精确 `origin/main=8adf9e2760cc525a613c3eb27fd0835d77525a9c`；当前全部
-Phase 5 变化未提交、未推送，也未创建 Graph Engineering PR 或修改 main。
+Phase 5：Review、GitHub 与交付已在 `phase/5-review-github-delivery` 完成实现和验证。Human
+已授权提交和推送；实现提交 `db7dd54` 已推送到远端 Phase 5 分支。分支创建自精确
+`origin/main=8adf9e2760cc525a613c3eb27fd0835d77525a9c`。未创建 Graph Engineering PR，未修改 main。
 
 ## 已核实 baseline 与集成顺序
 
@@ -53,5 +53,5 @@ Phase 5 变化未提交、未推送，也未创建 Graph Engineering PR 或修�
 
 ## 下一步
 
-Human 审阅 Phase 5 实现、测试和风险。只有再次明确批准后才允许 commit/push Phase 5；仍不得
-自动 merge、修改/push main、创建 Graph Engineering PR 或开始 Phase 6。
+Human 审阅已推送的 Phase 5 提交和验证证据，并决定后续集成方式。仍不得自动 merge、
+修改/push main、创建 Graph Engineering PR 或开始 Phase 6。

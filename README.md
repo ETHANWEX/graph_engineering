@@ -4,8 +4,9 @@ Graph Engineering 是一个面向自治软件开发的图工程控制层。Human
 
 > 当前状态：Human 批准的 Phase 2、3、4 已按顺序进入远端 `main`。Phase 5 从精确
 > `origin/main=8adf9e2760cc525a613c3eb27fd0835d77525a9c` 创建独立分支
-> `phase/5-review-github-delivery`，正在实现多维 Review、requirement matrix、GitHub provider
-> 和所有终态交付。真实 PR、提交、推送、合并、自动合并及 Phase 6 均未获授权。
+> `phase/5-review-github-delivery`，已完成多维 Review、requirement matrix、GitHub provider
+> 和所有终态交付，并经 Human 授权提交、推送。真实 PR、合并、main 修改、自动合并及
+> Phase 6 均未获授权。
 
 ## 已实现能力
 
@@ -260,8 +261,8 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 
 - 已合并阶段：Phase 0–4；Phase 2/3/4 批准提交分别为 `53df64c`、`b746b3f`、`7410a66`。
 - 活跃阶段：Phase 5 实现与验证完成，精确 baseline 为
-  `8adf9e2760cc525a613c3eb27fd0835d77525a9c`，等待 Human review。
-- 当前未授权：Graph Engineering 真实 PR、提交、推送、main 修改、merge、auto-merge、Phase 6。
+  `8adf9e2760cc525a613c3eb27fd0835d77525a9c`；实现提交 `db7dd54` 已推送到 Phase 5 远端分支。
+- 当前未授权：Graph Engineering 真实 PR、main 修改、merge、auto-merge、Phase 6。
 - GitHub CLI 2.97.0 已安装，`pr`、`run`、`api` 命令入口可用；当前未登录任何 GitHub host，
   因此私有仓库读取和真实 GitHub E2E 仍保持未验证。隔离 provider fixture 不冒充真实 E2E。
 - 当前设计：[DESIGN.md](DESIGN.md)
