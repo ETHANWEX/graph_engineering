@@ -2,104 +2,96 @@
 
 ## 当前阶段
 
-Phase 1：持久化 Graph Runtime 已在 `phase/1-runtime` 实现、通过本阶段验证并获 Human
-认可；交付分支等待 Human 集成，未创建 PR，也未合并到 `main`。
+Phase 2：Codex Executor 与 Memory 已在 `phase/2-codex-memory` 实现并完成本地及真实 Codex
+验收，等待 Human 审阅。未提交、未推送、未创建 PR、未合并，也未开始 Phase 3。
+
+## 基线与同步
+
+- 开始前执行 `git fetch origin`，`origin/main` 从 `ece58b0` 更新为 `a069b36`。
+- `origin/main=a069b36` 直接包含 `5bad314` 和 `69dc5e9`，确认 Phase 1 已合并。
+- 本地 `main` 从 `ece58b0` 以 `git pull --ff-only origin main` 安全快进到 `a069b36`。
+- Phase 2 分支从该提交创建；开始时没有 tracked/untracked 修改。
+- `.local/graph-engineering-interview-prep.md` 是既有 ignored 用户文件，未读取、未修改。
 
 ## 已完成
 
-- 保持 Phase 0 的公共 Schema 1.0 与 30 个提交 Schema 完全不变。
-- 实现 SQLite State Store、单调迁移、外键/WAL、显式 writer 事务与只读快照。
-- 状态事务同步写入 event outbox；JSONL Event Store 使用稳定 event ID 幂等 flush、fsync。
-- 实现内容寻址、原子落盘、不可覆盖的最小 Artifact Store。
-- 实现单机、单任务、串行 Runtime，覆盖 node/attempt/edge/run/budget 的确定性状态变化。
-- 实现受限条件边、修复循环、边遍历上限、executor-call/repair budget 与终止语义。
-- Run 和 Node 均执行调用次数、持续时间、修复次数预算；显式 cost charge 同时更新并执行
-  Run/Node cost budget。
-- 实现 checkpoint、Contract/Graph hash 校验、已完成节点恢复去重。
-- 实现 Fake Executor/Fake Verifier；外部 handle 先记录 trigger intent，再 checkpoint handle，
-  恢复时只查询不重触发；无法确认时停止并在报告中披露。
-- 实现强类型 Control API、pause/resume/interrupt 屏障、取消、只读 snapshot 与 LiveReport。
-- 屏障持久化后 Scheduler 不启动新的 node、attempt 或外部 trigger。
-- 校验 `RunRelationship` 引用存在性和 checkpoint 所有权/hash；同图 checkpoint restart
-  继承 node/result/route/Artifact link、重置新 Run budget，且不修改来源 Run。
-- Artifact Store 已接通 SQLite metadata、role-scoped Run link、审计事件和 Result checkpoint；
-  基础 FinalReport 聚合 changed files 与 Verifier evidence。
-- 为 `succeeded`、`failed`、`error`、`interrupted`、`cancelled` 生成基础 FinalReport。
-- 新增 26 个 Phase 1 测试和串行 Graph/Fake result fixtures；合计 62 个 pytest 测试。
+- 新增 ADR-007–011 和 Phase 2 可验证范围文档。
+- provider-neutral Executor 协议：capabilities、start、resume、review、cancel；Core 不保存 Codex
+  JSONL 或 argv。
+- Codex preflight 记录版本、认证和 help-derived capabilities；0.147.0 + ChatGPT login 可用。
+- Codex Adapter 使用 argv、approval `never`、workspace-write/read-only、JSONL、
+  `--output-schema`、`--output-last-message`，拒绝 dangerous bypass。
+- Pydantic JSON Schema 在 Adapter 内转换为 Codex Structured Outputs strict object 规则；公共
+  Schema 1.0 不变。未知 JSONL 事件保留为 neutral unknown event，原始输出进入 Artifact。
+- SQLite migration 3 新增 executor_sessions、supervised_processes、review_attempts 和
+  verifier_executions；Session 结果/Artifact refs 可在进程重启后恢复并避免重复 attempt。
+- fresh-per-node、同节点 bounded resume、continuation/failure rotate、Reviewer always-fresh。
+- 限长确定性 Context Builder、不可丢弃 Contract/policy/schema、Repository Map 和 Handoff。
+- GitWorkspaceManager 为每 Run 建立独立 branch/worktree；accepted commit restart 不修改来源。
+- FrozenInputs 对 Contract/Graph/Verifier/acceptance lock 执行 hash 校验。
+- 独立 read-only Reviewer/Observer；Observer 前后 execution fingerprint 不变，失败隔离。
+- review changes_requested → Implementer fix → affected Command Verifier → fresh review attempt。
+- argv-only Command Verifier：passed/failed/error/timeout/output limit 和原始证据 Artifact。
+- ProcessSupervisor 与真实 Codex known-Session resume cancel；未及时退出返回 quiescing。
 
-## 未完成
+## 本机 Codex 运行时事实
 
-- 不包含真实 Codex、Claude Code 或其他 Executor Adapter。
-- 不包含 Context Builder、Session、独立 Reviewer/Observer Agent、Git branch/worktree 隔离。
-- 不包含自然语言模型、意图识别、Human Gateway 产品逻辑或持续对话。
-- 不包含动态 Verifier、Command/HTTP Pipeline、网络、secret、远程 CI。
-- 不包含 daemon、GitHub PR、Plugin、MCP 产品入口、UI、并行图或 Phase 2–6 能力。
-
-## 关键决策
-
-- [ADR-001](../adr/001-independent-core.md)：provider-neutral 独立核心。
-- [ADR-002](../adr/002-python-toolchain.md)：Python 3.12+ 与严格工程工具链。
-- [ADR-003](../adr/003-protocol-versioning-and-revisions.md)：显式协议版本与追加式修订。
-- [ADR-004](../adr/004-control-routing-and-terminal-semantics.md)：强类型控制、安全路由、终态语义。
-- [ADR-005](../adr/005-persistent-runtime-storage.md)：SQLite 权威状态、事务 outbox、JSONL 与内容寻址 Artifact。
-- [ADR-006](../adr/006-runtime-control-and-recovery.md)：状态机、控制屏障、恢复与外部副作用语义。
+- `codex-cli 0.147.0`；`codex login status` 为 `Logged in using ChatGPT`。
+- help 支持 exec JSONL、output schema、last message、resume、review、sandbox 和 approval never。
+- OpenAI Docs 确认 `codex exec` 是非交互入口，`--json` 是每状态变化一行 JSON，resume 是
+  官方子命令：<https://learn.chatgpt.com/docs/developer-commands#codex-exec>。
+- 真实调用发现 0.147.0 的 `exec review --output-schema` 最后消息仍是纯文本；结构化 Reviewer
+  因而使用 fresh `codex exec` + read-only + Review Schema。native review capability 被记录但
+  不冒充结构化通过。
+- Windows pytest basetemp 会产生 Codex sandbox 无法进入的 ACL；真实验收使用预建、ignored、
+  独立 fixture Git 目录，避免把基础设施错误误判为实现错误。
 
 ## 代码入口
 
-- `src/graph_engineering/runtime/store.py`：SQLite migration、事务、只读连接和 event outbox。
-- `src/graph_engineering/runtime/events.py`：幂等追加 JSONL Event Store。
-- `src/graph_engineering/runtime/artifacts.py`：内容寻址 Artifact Store。
-- `src/graph_engineering/runtime/engine.py`：串行 Scheduler、Control API、恢复与报告编译。
-- `src/graph_engineering/runtime/fakes.py`：Fake Executor/Verifier 与 external handle 查询。
-- `src/graph_engineering/runtime/types.py`：强类型只读 RunSnapshot。
-- `tests/test_runtime_*.py`：Phase 1 存储、执行、控制和恢复验收测试。
+- `executor/types.py`、`executor/runtime.py`、`executor/process.py`：协议、Session 策略、持久
+  去重与进程监督。
+- `adapters/codex.py`：preflight、argv、strict Schema、JSONL、Artifact 和 cancel。
+- `context/`：Context Package、Handoff、Repository Map。
+- `workspace/git.py`：Run branch/worktree 和 accepted commit materialization。
+- `review/`：结构化 findings、fresh read-only roles 和 review-fix coordinator。
+- `verifier/command.py`：声明式 argv Command Verifier。
+- `runtime/sessions.py`、`runtime/frozen.py`、`runtime/store.py`：migration 3、恢复和 frozen hash。
 
-## 数据、迁移与状态机
+## 数据与协议
 
-- 包版本：`0.2.0`；公共协议版本仍为 `1.0`。
-- SQLite migration 版本：`2`；表包括 runs、nodes、attempts、edge_traversals、budgets、
-  checkpoints、external_handles、control_intents、reports、artifact_metadata、run_artifacts、
-  event_outbox。
-- Run 运行态：`running → pause_requested/quiescing → paused/running`；终态使用公共
-  `succeeded/failed/error/interrupted/cancelled`。
-- Node/attempt 内部态：pending、ready、running、succeeded、failed、error、cancelled。
-- JSONL 是 outbox 的追加式审计投影；SQLite 是权威状态。
+- 包版本：`0.3.0`；公共协议和 30 个提交 JSON Schema 仍为 `1.0`，无漂移。
+- StateStore 保留 Phase 1 `schema_version == 2` 兼容属性；实际最新存储迁移由
+  `latest_migration_version == 3` 报告。
+- SQLite 只保存 provider-neutral Session/version/status/counters/result/Artifact refs；Codex
+  provider JSONL 只存在 Adapter raw Artifact。
 
 ## 验证结果
 
-2026-08-16，CPython 3.12.10（另在 CPython 3.13.14 完成兼容性复跑）：
+环境：Windows、CPython 3.12.10、Codex CLI 0.147.0，2026-08-16。
 
-- `py -3.12 --version`：`Python 3.12.10`。
-- `py -3.12 -m venv .local\venv312`：成功创建隔离环境（`.local/` 已忽略）。
-- `.local\venv312\Scripts\python -m pip install -e ".[dev]"`：成功安装 `graph-engineering 0.2.0`。
-- `.local\venv312\Scripts\python -m pytest --basetemp C:\Users\ADMIN\AppData\Local\Temp\graph-engineering-phase1-review-py312-final2`：62 passed。
-- `.local\venv312\Scripts\python -m mypy src tests`：0 issues（30 source files）。
-- `.local\venv312\Scripts\python -m ruff check src tests`：通过。
-- `.local\venv312\Scripts\python -m ruff format --check src tests`：30 files already formatted。
-- `.local\venv312\Scripts\ge schema export --output schemas`：导出 30 个 Schema。
-- `git diff --exit-code -- schemas`：通过，无 Schema 漂移。
-- CPython 3.13.14 独立复跑：同样 62 passed，mypy/Ruff 检查通过。
+- Phase 0–2 默认 suite：90 passed、1 real-Codex skipped；共收集 91 项。
+- 真实 Codex fixture：1 passed in 289.42s，覆盖 implement→failed verifier→fresh reviewer
+  changes_requested→resume fix→passed verifier→fresh reviewer approved→fresh observer→持久化
+  Session/Artifact/Handoff→Runtime 重启恢复→interrupt。
+- mypy strict：0 issues；Ruff lint/format：通过。
+- Phase 1 的 62 项测试未修改且保持通过。
+- Schema、Graph CLI 与最终准确计数在 handoff 的最终复跑段记录。
 
-## 已知风险
+## 已知问题与未完成
 
-- SQLite 与 JSONL 采用事务 outbox，状态/event intent 原子，但 JSONL 投影是 crash-recovery
-  后最终一致，不宣称跨文件原子写。
-- 无 handle 的 `triggering` 外部操作只能标记为 uncertain 并停止，无法提供 exactly-once；
-  真实外部系统的查询/取消/补偿留到后续阶段。
-- Phase 1 只使用同步 Fake 边界；真实进程终止、Session 恢复和 worktree 安全属于 Phase 2。
-- `accepted_commit` 仅完成强类型记录；实际 Git worktree materialization 属于 Phase 2。
-- FinalReport 是 Phase 1 基础版本；完整 requirement matrix、多维 Review/GitHub 证据属于 Phase 5。
+- native `codex exec review` 的结构化输出在 0.147.0 不可靠，使用已记录的 read-only exec
+  fallback；未来版本需 fixture/preflight 再启用 native structured review。
+- ProcessSupervisor 是本机进程边界；OS 无法及时终止时只能 quiescing 并披露，不能宣称回滚。
+- Phase 2 不含自然语言 Gateway、动态/HTTP Verifier、远程 CI、GitHub、daemon、Plugin/UI、
+  并行图或完整 Phase 5 requirement matrix。
 
 ## 工作区状态
 
-- 分支：`phase/1-runtime`。
-- 基线：`ece58b0`（已合并 Phase 0 的 `origin/main`）。
-- Phase 1 实现提交：`5bad314`；最终交接元数据提交为本分支 `HEAD`。
-- Phase 1 修改已全部提交；没有未提交修改，也没有覆盖或回退用户修改。
-- Human 已认可交付；未创建 PR、未合并。
+- 分支：`phase/2-codex-memory`；基线：`a069b36`。
+- Phase 2 修改未提交，等待 Human review；不得 push/PR/merge。
+- ignored `.local/real-codex-fixture` 保留真实验收的临时 Git repo、raw JSONL/command evidence。
 
 ## 下一阶段第一步
 
-由 Human 控制将 `phase/1-runtime` 集成到 `main`；集成后，才可从更新后的 `main` 创建
-Phase 2 分支。Phase 2 第一步是冻结 Codex capability/
-preflight 与 provider-neutral Adapter 边界，不得把 provider Session wire format写入 Core。
+Human 审阅 Phase 2 的实现、测试和真实 Codex 证据；只有明确批准后才提交并推送本分支。
+Phase 2 集成 main 之前不得开始 Phase 3。
