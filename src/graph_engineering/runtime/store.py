@@ -80,6 +80,12 @@ class StateStore:
                     "INSERT INTO schema_migrations(version, applied_at) VALUES (5, ?)",
                     (timestamp(),),
                 )
+            if 6 not in applied:
+                connection.executescript(_MIGRATION_6)
+                connection.execute(
+                    "INSERT INTO schema_migrations(version, applied_at) VALUES (6, ?)",
+                    (timestamp(),),
+                )
             connection.commit()
 
     @property
@@ -102,6 +108,14 @@ class StateStore:
 
     @property
     def database_migration_version(self) -> int:
+        """Phase 4 compatibility level; use delivery_migration_version for the actual head."""
+
+        return min(self.delivery_migration_version, 5)
+
+    @property
+    def delivery_migration_version(self) -> int:
+        """Actual storage head including Phase 5 delivery tables."""
+
         with self.read_connection() as connection:
             row = connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()
             return int(row[0]) if row is not None and row[0] is not None else 0
@@ -550,4 +564,106 @@ ALTER TABLE external_handles ADD COLUMN verifier_revision INTEGER;
 ALTER TABLE external_handles ADD COLUMN cancel_state TEXT;
 ALTER TABLE external_handles ADD COLUMN report_artifact_id TEXT;
 ALTER TABLE external_handles ADD COLUMN residual_effect TEXT;
+"""
+
+_MIGRATION_6 = """
+CREATE TABLE phase5_review_attempts (
+    run_id TEXT NOT NULL,
+    attempt_number INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    fix_count INTEGER NOT NULL DEFAULT 0,
+    affected_verifiers_json TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL,
+    invalidated_at TEXT,
+    PRIMARY KEY(run_id, attempt_number)
+);
+
+CREATE TABLE phase5_review_dimensions (
+    run_id TEXT NOT NULL,
+    attempt_number INTEGER NOT NULL,
+    dimension TEXT NOT NULL,
+    session_id TEXT NOT NULL,
+    result_json TEXT,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY(run_id, attempt_number, dimension),
+    FOREIGN KEY(run_id, attempt_number)
+      REFERENCES phase5_review_attempts(run_id, attempt_number)
+);
+
+CREATE TABLE requirement_matrix_revisions (
+    contract_id TEXT NOT NULL,
+    contract_revision INTEGER NOT NULL,
+    matrix_revision INTEGER NOT NULL,
+    matrix_json TEXT NOT NULL,
+    matrix_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY(contract_id, contract_revision, matrix_revision)
+);
+
+CREATE TABLE github_check_queries (
+    query_id TEXT PRIMARY KEY,
+    run_id TEXT,
+    repository TEXT NOT NULL,
+    commit_sha TEXT NOT NULL,
+    status_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE pull_request_intents (
+    idempotency_key TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL,
+    repository TEXT NOT NULL,
+    base_branch TEXT NOT NULL,
+    head_branch TEXT NOT NULL,
+    spec_json TEXT NOT NULL,
+    state TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE pull_request_handles (
+    idempotency_key TEXT PRIMARY KEY REFERENCES pull_request_intents(idempotency_key),
+    run_id TEXT NOT NULL,
+    repository TEXT NOT NULL,
+    base_branch TEXT NOT NULL,
+    head_branch TEXT NOT NULL,
+    pr_number INTEGER NOT NULL,
+    pr_url TEXT NOT NULL,
+    node_id TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE delivery_terminal_fixtures (
+    run_id TEXT PRIMARY KEY,
+    contract_id TEXT NOT NULL,
+    contract_revision INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE delivery_report_revisions (
+    run_id TEXT NOT NULL,
+    revision INTEGER NOT NULL,
+    terminal_status TEXT NOT NULL,
+    terminal_reason TEXT NOT NULL,
+    manifest_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY(run_id, revision)
+);
+
+CREATE TABLE human_acceptance_records (
+    record_id TEXT PRIMARY KEY,
+    source_message_id TEXT NOT NULL UNIQUE,
+    intent_id TEXT NOT NULL UNIQUE,
+    run_id TEXT NOT NULL,
+    actor_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    reason TEXT,
+    contract_revision INTEGER NOT NULL,
+    report_revision INTEGER NOT NULL,
+    new_contract_revision INTEGER,
+    new_run_id TEXT,
+    created_at TEXT NOT NULL
+);
 """

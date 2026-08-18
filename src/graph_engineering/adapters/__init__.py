@@ -2,6 +2,7 @@
 
 from .codex import CodexAdapter, CodexJsonlParser, CodexPreflight
 from .discovery import CodexDiscoveryAdapter, CodexDiscoveryOutcome, CodexDiscoveryProposal
+from .review import CodexReviewDimensionAdapter
 from .verifier_generation import (
     CodexVerifierGenerator,
     GeneratedFile,
@@ -16,6 +17,7 @@ __all__ = [
     "CodexDiscoveryProposal",
     "CodexJsonlParser",
     "CodexPreflight",
+    "CodexReviewDimensionAdapter",
     "CodexVerifierGenerator",
     "GeneratedFile",
     "GeneratedVerifierBundle",

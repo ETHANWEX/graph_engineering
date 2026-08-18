@@ -2,14 +2,15 @@
 
 Graph Engineering 是一个面向自治软件开发的图工程控制层。Human 通过自然语言定义需求和授权边界、随时查询或中断开发，并最终验收成果；Graph Runtime 在冻结的 Contract 内组织 Coding Agent、确定性工具、Verifier、反馈循环和外部系统，持续完成实现、验证、修复、审查与证据交付。
 
-> 当前状态：Phase 4（动态 Verifier）已在 stacked 分支 `phase/4-dynamic-verifiers` 实现并
-> 完成确定性、本地 HTTP fixture 和真实 Codex 验证，等待 Human 审阅。Phase 4 精确基于已
-> 批准并推送的 Phase 3 提交 `b746b3f`；强制集成顺序是 Phase 2 → Phase 3 → Phase 4。
-> GitHub 专用集成、PR、自动合并、后台 daemon 和 Plugin/UI 尚未实现。
+> 当前状态：Human 批准的 Phase 2、3、4 已按顺序进入远端 `main`。Phase 5 从精确
+> `origin/main=8adf9e2760cc525a613c3eb27fd0835d77525a9c` 创建独立分支
+> `phase/5-review-github-delivery`，已完成多维 Review、requirement matrix、GitHub provider
+> 和所有终态交付，并经 Human 授权提交、推送。真实 PR、合并、main 修改、自动合并及
+> Phase 6 均未获授权。
 
 ## 已实现能力
 
-Phase 0–4 当前提供：
+Phase 0–5 当前工作树提供：
 
 - Python 3.12+、Pydantic v2 和 Typer 的可安装 `src` layout 包。
 - 版本化 Task Contract、Execution Graph、Result、Control、Run 关系和 Report 协议。
@@ -58,8 +59,18 @@ Phase 0–4 当前提供：
   fixtures、tests、raw JSONL/stderr 均独立验证或保存。
 - SQLite migration 5 保存 Verifier revision/lifecycle evidence/Contract binding，并扩展 external
   handle 的 verifier owner、cancel state、report 和 residual-effect 元数据。
-- 135 个 pytest 测试（Phase 0–3 的 108 项基线保持；3 个真实 Codex 测试默认跳过并分别显式
-  验收）。
+- 四维 Contract/Correctness/Security/Test Adequacy Review、确定性阻断聚合、Reviewer error
+  隔离、fresh read-only Session/attempt 和持久化 review-fix 上限。
+- 每个冻结验收条件一行的 append-only requirement matrix；只有冻结或内容寻址证据可标记
+  verified，缺失/可变证据明确 unverified。
+- 精确 repository/commit 绑定的 GitHub Checks 状态、错误分类、bounded poll 和重启恢复查询。
+- checkpointed PR intent/handle、精确 head/base 所有权、稳定幂等键、恢复防重复、barrier 和
+  不确定创建结果停止；没有 merge API。
+- 所有终态的十文件版本化 delivery bundle、只读 `ge report`，以及经 HumanMessage、Intent
+  Compiler 和确认策略的 `ge accept` / `ge reject`；accept 永不 merge。
+- SQLite migration 6 与 Phase 0–4 compatibility views；公共 Schema 1.0 仍为 30 个且无变化。
+- 156 个 pytest 测试（152 passed / 4 个真实 Codex 测试默认跳过）；Phase 0–4 的
+  135 collected / 132 passed / 3 skipped 基线保持。
 
 开发安装：
 
@@ -72,6 +83,9 @@ python -m venv .venv
 
 ```powershell
 ge start --project-root .
+ge report <run-id>
+ge accept <run-id>
+ge reject <run-id> --reason "..."
 ge graph validate tests/fixtures/valid/graph.yaml
 ge verifier list
 ge verifier validate tests/fixtures/verifier/valid.json
@@ -245,15 +259,12 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 
 ## 当前开发状态
 
-- 已完成阶段：Phase 0–1 已由 Human 审阅并合并；Phase 2 已由 Human 批准并推送到
-  `origin/phase/2-codex-memory`，但因 PR 服务故障尚未合并；Phase 3 由 Human 授权从批准提交
-  `53df64c` stacked 开发，当前等待审阅且未提交、未推送。
-- 已实现边界：协议/Schema、持久串行 Runtime、Codex Adapter/Session、Context/Handoff、
-  worktree、Reviewer/Observer、Command Verifier、真实 review-fix/interrupt fixture。
-- 已实现边界新增：Human Conversation、Intent Compiler、Discovery、Contract Repository、
-  acceptance lock、Graph Compiler、prepared Run lineage 和 Codex Discovery Adapter。
-- 尚未实现：动态/HTTP Verifier、daemon、远程 CI、GitHub PR、Plugin/MCP/UI、并行图或
-  Phase 4–6 能力。
+- 已合并阶段：Phase 0–4；Phase 2/3/4 批准提交分别为 `53df64c`、`b746b3f`、`7410a66`。
+- 活跃阶段：Phase 5 实现与验证完成，精确 baseline 为
+  `8adf9e2760cc525a613c3eb27fd0835d77525a9c`；实现提交 `db7dd54` 已推送到 Phase 5 远端分支。
+- 当前未授权：Graph Engineering 真实 PR、main 修改、merge、auto-merge、Phase 6。
+- GitHub CLI 2.97.0 已安装，`pr`、`run`、`api` 命令入口可用；当前未登录任何 GitHub host，
+  因此私有仓库读取和真实 GitHub E2E 仍保持未验证。隔离 provider fixture 不冒充真实 E2E。
 - 当前设计：[DESIGN.md](DESIGN.md)
 - 跨对话状态：[docs/status/CURRENT.md](docs/status/CURRENT.md)
 - Phase 0 范围：[docs/phases/phase-0.md](docs/phases/phase-0.md)
@@ -264,6 +275,10 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 - Phase 2 交接：[docs/phases/phase-2-handoff.md](docs/phases/phase-2-handoff.md)
 - Phase 3 范围：[docs/phases/phase-3.md](docs/phases/phase-3.md)
 - Phase 3 交接：[docs/phases/phase-3-handoff.md](docs/phases/phase-3-handoff.md)
+- Phase 4 范围：[docs/phases/phase-4.md](docs/phases/phase-4.md)
+- Phase 4 交接：[docs/phases/phase-4-handoff.md](docs/phases/phase-4-handoff.md)
+- Phase 5 范围：[docs/phases/phase-5.md](docs/phases/phase-5.md)
+- Phase 5 交接：[docs/phases/phase-5-handoff.md](docs/phases/phase-5-handoff.md)
 - 协作约定：[AGENTS.md](AGENTS.md)
 
 README 是项目对外的首要入口。每个阶段完成时都必须同步更新这里的架构、已实现能力、安装方式、示例命令和限制，避免 README 描述超前于代码。

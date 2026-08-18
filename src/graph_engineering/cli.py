@@ -28,6 +28,77 @@ app.add_typer(schema_app, name="schema")
 app.add_typer(verifier_app, name="verifier")
 
 
+def _delivery_paths(run_id: str, state_db: Path | None) -> tuple[Path, Path, Path]:
+    database = state_db or Path(".ge") / "runs" / run_id / "state.db"
+    root = database.parent
+    return database, root / "artifacts", root / "reports"
+
+
+@app.command("report")
+def report_run(
+    run_id: str,
+    state_db: Annotated[Path | None, typer.Option("--state-db")] = None,
+) -> None:
+    """Read the latest immutable delivery-report revision without mutation."""
+
+    from graph_engineering.delivery import DeliveryReportCompiler
+    from graph_engineering.runtime import ArtifactStore
+
+    database, artifacts, reports = _delivery_paths(run_id, state_db)
+    bundle = DeliveryReportCompiler(StateStore(database), ArtifactStore(artifacts), reports).latest(
+        run_id
+    )
+    typer.echo(bundle.model_dump_json())
+
+
+@app.command("accept")
+def accept_run(
+    run_id: str,
+    state_db: Annotated[Path | None, typer.Option("--state-db")] = None,
+    report_revision: Annotated[int, typer.Option("--report-revision", min=1)] = 1,
+    actor_id: Annotated[str, typer.Option("--actor-id")] = "human",
+    project_id: Annotated[str, typer.Option("--project-id")] = "project",
+) -> None:
+    """Record confirmed Human acceptance; this never merges."""
+
+    from graph_engineering.delivery import HumanDecisionService
+
+    database, _, _ = _delivery_paths(run_id, state_db)
+    human = _human_message(
+        f"confirm accept {run_id}", actor_id=actor_id, project_id=project_id, run_id=run_id
+    )
+    record = HumanDecisionService(StateStore(database)).accept(
+        human, report_revision=report_revision
+    )
+    typer.echo(record.model_dump_json())
+
+
+@app.command("reject")
+def reject_run(
+    run_id: str,
+    reason: Annotated[str, typer.Option("--reason", min=1)],
+    state_db: Annotated[Path | None, typer.Option("--state-db")] = None,
+    report_revision: Annotated[int, typer.Option("--report-revision", min=1)] = 1,
+    actor_id: Annotated[str, typer.Option("--actor-id")] = "human",
+    project_id: Annotated[str, typer.Option("--project-id")] = "project",
+) -> None:
+    """Record confirmed Human rejection and append a Contract revision."""
+
+    from graph_engineering.delivery import HumanDecisionService
+
+    database, _, _ = _delivery_paths(run_id, state_db)
+    human = _human_message(
+        f"confirm reject {run_id}: {reason}",
+        actor_id=actor_id,
+        project_id=project_id,
+        run_id=run_id,
+    )
+    record = HumanDecisionService(StateStore(database)).reject(
+        human, reason=reason, report_revision=report_revision
+    )
+    typer.echo(record.model_dump_json())
+
+
 def _write_immutable(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():

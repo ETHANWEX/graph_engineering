@@ -14,7 +14,7 @@ python -m venv .venv
 .venv\Scripts\python -m pip install -e ".[dev]"
 ```
 
-Run the complete Phase 0–2 checks (the real Codex test is an explicit acceptance command):
+Run the complete Phase 0–5 checks (real Codex tests remain explicit acceptance commands):
 
 ```powershell
 .venv\Scripts\python -m pytest
@@ -24,8 +24,7 @@ Run the complete Phase 0–2 checks (the real Codex test is an explicit acceptan
 .venv\Scripts\ge schema export --output schemas
 git diff --exit-code -- schemas
 $env:GE_RUN_REAL_CODEX="1"
-$env:GE_REAL_CODEX_FIXTURE_ROOT="<ignored-isolated-fixture-root>"
-.venv\Scripts\python -m pytest tests/test_phase2_real_codex.py -m real_codex
+.venv\Scripts\python -m pytest tests/test_phase5_real_codex_review.py -m real_codex
 ```
 
 The committed JSON Schemas are compatibility surfaces. Update models, fixtures, tests, schemas,
