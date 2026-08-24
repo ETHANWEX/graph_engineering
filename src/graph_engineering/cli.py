@@ -25,10 +25,45 @@ graph_app = typer.Typer(help="Static Execution Graph tools.", no_args_is_help=Tr
 schema_app = typer.Typer(help="JSON Schema tools.", no_args_is_help=True)
 verifier_app = typer.Typer(help="Dynamic Verifier lifecycle tools.", no_args_is_help=True)
 service_app = typer.Typer(help="Local Runtime Service lifecycle.", no_args_is_help=True)
+qualification_app = typer.Typer(
+    help="Versioned integration qualification evidence.", no_args_is_help=True
+)
 app.add_typer(graph_app, name="graph")
 app.add_typer(schema_app, name="schema")
 app.add_typer(verifier_app, name="verifier")
 app.add_typer(service_app, name="service")
+app.add_typer(qualification_app, name="qualification")
+
+
+@qualification_app.command("collect")
+def qualification_collect(
+    output: Annotated[Path, typer.Option("--output", "-o", dir_okay=False)],
+    project_root: Annotated[
+        Path, typer.Option("--project-root", exists=True, file_okay=False, resolve_path=True)
+    ] = Path("."),
+) -> None:
+    """Collect read-only local identity and an honest default claim matrix."""
+
+    from graph_engineering.qualification import QualificationRepository, collect_local_evidence
+
+    repository = QualificationRepository(output)
+    try:
+        repository.write(collect_local_evidence(project_root, external_authorized=False))
+    except FileExistsError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(str(output))
+
+
+@qualification_app.command("report")
+def qualification_report(
+    evidence: Annotated[Path, typer.Argument(exists=True, dir_okay=False, readable=True)],
+) -> None:
+    """Read an existing evidence document without rewriting it or touching Runtime state."""
+
+    from graph_engineering.qualification import QualificationRepository
+
+    document = QualificationRepository(evidence).read()
+    typer.echo(document.model_dump_json())
 
 
 @service_app.command("start")

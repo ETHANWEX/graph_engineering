@@ -2,14 +2,15 @@
 
 Graph Engineering 是一个面向自治软件开发的图工程控制层。Human 通过自然语言定义需求和授权边界、随时查询或中断开发，并最终验收成果；Graph Runtime 在冻结的 Contract 内组织 Coding Agent、确定性工具、Verifier、反馈循环和外部系统，持续完成实现、验证、修复、审查与证据交付。
 
-> 当前状态：Phase 6D Autonomous Delivery Closure 已在 `phase/6-enhancements` 上完成实现与验证，精确
-> baseline 为 Phase 6C delivery `50f1d0a47d6c210c407af79b5c00e73b43ea984e`。本阶段实现已获
-> 授权，但 delivery commit、push、PR、main 修改/merge、Plugin 安装发布、真实外部写入和
-> Phase 6E 均未授权；全部 Phase 6D 结果保持未提交等待 Human Review。
+> 当前状态：Phase 6E Integration Qualification 已在 `phase/6-enhancements` 上完成实现与
+> 已授权本地资格测试，精确
+> baseline 为 Phase 6D delivery `651352c056c5402c6a4a4057946822948a23ea66`。本阶段实现与
+> 无未授权外部副作用的本地 qualification 已获授权；delivery commit、push、PR、main
+> 修改/merge、发布、真实 Plugin-load/Codex、GitHub、container 和跨平台执行均未授权。
 
 ## 已实现能力
 
-Phase 0–6D 当前工作树提供：
+Phase 0–6E 当前工作树提供：
 
 - Python 3.12–3.13、Pydantic v2 和 Typer 的可安装 `src` layout 包。
 - 版本化 Task Contract、Execution Graph、Result、Control、Run 关系和 Report 协议。
@@ -104,6 +105,10 @@ Phase 0–6D 当前工作树提供：
   historical database 和旧 compatibility view 可读。
 - 225 个 pytest collected 实例（221 passed / 4 个真实 Codex 实例默认跳过）；mypy strict、Ruff、
   36-schema drift、Graph CLI 和 migration 1–10 repeatability 全部通过。
+- 独立于 Runtime SQLite 的 qualification evidence 1.0、secret-safe claim matrix、append-only
+  evidence 文件和只读 `ge qualification report`；blocked/unverified 永不映射为 passed。
+- 固定 `SOURCE_DATE_EPOCH` 的可重复 wheel/sdist、本地 Python 3.12/3.13 clean install、
+  Service/IPC/MCP smoke，以及 Phase 6D wheel 到当前 build 的数据保留升级资格证据。
 
 开发安装：
 
@@ -127,6 +132,8 @@ ge graph validate tests/fixtures/valid/graph.yaml
 ge verifier list
 ge verifier validate tests/fixtures/verifier/valid.json
 ge schema export --output schemas
+ge qualification collect --output qualification.json
+ge qualification report qualification.json
 ```
 
 `ge start` 可跨进程恢复同一 Conversation、Discovery unknown、Contract draft 和待确认状态。
@@ -298,13 +305,14 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 
 - 已合并阶段：Phase 0–5；Phase 5 通过 PR #6 进入 `origin/main`，实现/交接提交为
   `db7dd54` / `4ebeb2d`。
-- 当前分支：`phase/6-enhancements`；Phase 6C delivery 是 R0 delivery
-  `b7da3c4c7712db0f8fb01f14cd2d141008c5186a` 的单一 child commit，本地/远端 SHA 在推送后核实。
-- 当前活动门禁：Phase 6D Autonomous Delivery Closure 已完成实现与双 Python 验证，所有
-  结果保持未提交并等待 Human Review。Contract confirmation 仅创建冻结输入与 prepared Run；
-  只有独立的显式 `ge run` 才能启动既有 Graph Runtime。
+- 当前分支：`phase/6-enhancements`；本地与远端 Phase 6 HEAD 均为 Phase 6D delivery
+  `651352c056c5402c6a4a4057946822948a23ea66`，其唯一 parent 是 Phase 6C delivery
+  `50f1d0a47d6c210c407af79b5c00e73b43ea984e`。
+- 当前活动门禁：Phase 6E Human Review。授权的 Windows 本地 package、双 Python、
+  Service/IPC/MCP 与 fixture 回归证据已生成；全部结果未提交，真实 provider 与 Linux/macOS
+  不以 fixture 冒充。
 - 当前未授权：Graph Engineering PR、main 修改、merge/auto-merge、Plugin 安装/发布、
-  真实外部写入、Phase 6D delivery commit/push 或 Phase 6E 实现。
+  真实外部写入、Phase 6E delivery commit/push、真实 Codex/GitHub/container 或 Phase 6F。
 - GitHub CLI 2.97.0 已安装，`pr`、`run`、`api` 命令入口可用；当前未登录任何 GitHub host，
   因此私有仓库读取和真实 GitHub E2E 仍保持未验证。隔离 provider fixture 不冒充真实 E2E。
 - 当前设计：[DESIGN.md](DESIGN.md)
@@ -335,6 +343,8 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 - Phase 6D 启动 Prompt：[docs/prompts/phase-6d-start.md](docs/prompts/phase-6d-start.md)
 - Phase 6D 范围：[docs/phases/phase-6d.md](docs/phases/phase-6d.md)
 - Phase 6D 交接：[docs/phases/phase-6d-handoff.md](docs/phases/phase-6d-handoff.md)
+- Phase 6E 范围：[docs/phases/phase-6e.md](docs/phases/phase-6e.md)
+- Phase 6E release readiness：[docs/qualification/phase-6e-release-readiness-v1.md](docs/qualification/phase-6e-release-readiness-v1.md)
 - 协作约定：[AGENTS.md](AGENTS.md)
 
 README 是项目对外的首要入口。每个阶段完成时都必须同步更新这里的架构、已实现能力、安装方式、示例命令和限制，避免 README 描述超前于代码。

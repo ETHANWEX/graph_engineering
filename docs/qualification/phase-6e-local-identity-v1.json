@@ -1,0 +1,269 @@
+{
+  "claims": [
+    {
+      "artifact_refs": [],
+      "claim_id": "packaging-local",
+      "cleanup": "not_required",
+      "conclusion": "unverified",
+      "counts": {
+        "blocked": 0,
+        "collected": 0,
+        "failed": 0,
+        "passed": 0,
+        "skipped": 0,
+        "unverified": 1
+      },
+      "duration_seconds": null,
+      "ended_at": null,
+      "evidence_classification": "unverified",
+      "exit_code": null,
+      "limitation": "Identity collection does not execute the packaging qualification suite.",
+      "operation": "not executed",
+      "product_claim": "wheel/sdist install and upgrade are reproducible on Python 3.12 and 3.13",
+      "recovery_guidance": "Run the versioned qualification operation on the required real environment.",
+      "required_environment": "isolated local Python 3.12 and 3.13",
+      "residual_effects": [],
+      "result": "unverified",
+      "started_at": null
+    },
+    {
+      "artifact_refs": [],
+      "claim_id": "windows-local",
+      "cleanup": "not_required",
+      "conclusion": "unverified",
+      "counts": {
+        "blocked": 0,
+        "collected": 0,
+        "failed": 0,
+        "passed": 0,
+        "skipped": 0,
+        "unverified": 1
+      },
+      "duration_seconds": null,
+      "ended_at": null,
+      "evidence_classification": "unverified",
+      "exit_code": null,
+      "limitation": "Identity collection alone is not supported-platform evidence.",
+      "operation": "not executed",
+      "product_claim": "Windows Service/IPC/worktree/subprocess/parallel/recovery boundaries are qualified",
+      "recovery_guidance": "Run the versioned qualification operation on the required real environment.",
+      "required_environment": "real Windows host",
+      "residual_effects": [],
+      "result": "unverified",
+      "started_at": null
+    },
+    {
+      "artifact_refs": [],
+      "claim_id": "codex-plugin-real",
+      "cleanup": "not_required",
+      "conclusion": "blocked",
+      "counts": {
+        "blocked": 1,
+        "collected": 0,
+        "failed": 0,
+        "passed": 0,
+        "skipped": 0,
+        "unverified": 0
+      },
+      "duration_seconds": null,
+      "ended_at": null,
+      "evidence_classification": "blocked",
+      "exit_code": null,
+      "limitation": "Real Plugin installation/load and autonomous Codex execution are not authorized.",
+      "operation": "not executed",
+      "product_claim": "Codex loads the Plugin and routes MCP to the persistent Runtime",
+      "recovery_guidance": "Resolve the exact target and cleanup plan, then obtain Human authorization.",
+      "required_environment": "Human-approved isolated CODEX_HOME and disposable Git repository",
+      "residual_effects": [],
+      "result": "blocked",
+      "started_at": null
+    },
+    {
+      "artifact_refs": [],
+      "claim_id": "github-real",
+      "cleanup": "not_required",
+      "conclusion": "blocked",
+      "counts": {
+        "blocked": 1,
+        "collected": 0,
+        "failed": 0,
+        "passed": 0,
+        "skipped": 0,
+        "unverified": 0
+      },
+      "duration_seconds": null,
+      "ended_at": null,
+      "evidence_classification": "blocked",
+      "exit_code": null,
+      "limitation": "No GitHub repository write scope or cleanup authority was granted.",
+      "operation": "not executed",
+      "product_claim": "GitHub PR/Checks recovery and idempotency are qualified",
+      "recovery_guidance": "Resolve the exact target and cleanup plan, then obtain Human authorization.",
+      "required_environment": "Human-approved exact disposable GitHub repository and identity",
+      "residual_effects": [],
+      "result": "blocked",
+      "started_at": null
+    },
+    {
+      "artifact_refs": [],
+      "claim_id": "container-real",
+      "cleanup": "not_required",
+      "conclusion": "blocked",
+      "counts": {
+        "blocked": 1,
+        "collected": 0,
+        "failed": 0,
+        "passed": 0,
+        "skipped": 0,
+        "unverified": 0
+      },
+      "duration_seconds": null,
+      "ended_at": null,
+      "evidence_classification": "blocked",
+      "exit_code": null,
+      "limitation": "Container execution is not authorized and no compatible runtime is available.",
+      "operation": "not executed",
+      "product_claim": "Pinned-image container isolation and cleanup are qualified",
+      "recovery_guidance": "Resolve the exact target and cleanup plan, then obtain Human authorization.",
+      "required_environment": "Human-approved existing Docker/Podman daemon and pinned local image",
+      "residual_effects": [],
+      "result": "blocked",
+      "started_at": null
+    },
+    {
+      "artifact_refs": [],
+      "claim_id": "linux-platform",
+      "cleanup": "not_required",
+      "conclusion": "unverified",
+      "counts": {
+        "blocked": 0,
+        "collected": 0,
+        "failed": 0,
+        "passed": 0,
+        "skipped": 0,
+        "unverified": 1
+      },
+      "duration_seconds": null,
+      "ended_at": null,
+      "evidence_classification": "unverified",
+      "exit_code": null,
+      "limitation": "No Linux runner or execution authority is available.",
+      "operation": "not executed",
+      "product_claim": "Linux is a supported release platform",
+      "recovery_guidance": "Run the versioned qualification operation on the required real environment.",
+      "required_environment": "real approved Linux host or CI runner",
+      "residual_effects": [],
+      "result": "unverified",
+      "started_at": null
+    },
+    {
+      "artifact_refs": [],
+      "claim_id": "macos-platform",
+      "cleanup": "not_required",
+      "conclusion": "unverified",
+      "counts": {
+        "blocked": 0,
+        "collected": 0,
+        "failed": 0,
+        "passed": 0,
+        "skipped": 0,
+        "unverified": 1
+      },
+      "duration_seconds": null,
+      "ended_at": null,
+      "evidence_classification": "unverified",
+      "exit_code": null,
+      "limitation": "No macOS runner or execution authority is available.",
+      "operation": "not executed",
+      "product_claim": "macOS is a supported release platform",
+      "recovery_guidance": "Run the versioned qualification operation on the required real environment.",
+      "required_environment": "real approved macOS host or CI runner",
+      "residual_effects": [],
+      "result": "unverified",
+      "started_at": null
+    }
+  ],
+  "cleanup": "not_required",
+  "counts": {
+    "blocked": 3,
+    "collected": 7,
+    "failed": 0,
+    "passed": 0,
+    "skipped": 0,
+    "unverified": 4
+  },
+  "duration_seconds": 0.158206,
+  "ended_at": "2026-08-24T17:26:50.440539Z",
+  "git": {
+    "branch": "phase/6-enhancements",
+    "commit": "651352c056c5402c6a4a4057946822948a23ea66",
+    "dirty": true,
+    "repository": "E:\\project\\graph_engineering"
+  },
+  "host": {
+    "architecture": "AMD64",
+    "filesystem": "Windows path semantics",
+    "os": "Windows",
+    "os_version": "10.0.26200",
+    "python": "3.13.14",
+    "shell": "C:\\Windows\\system32\\cmd.exe"
+  },
+  "limitations": [
+    "Identity collection is not an integration test."
+  ],
+  "qualification_version": "1.0",
+  "recovery_guidance": [
+    "Run focused qualification suites and attach immutable Artifacts."
+  ],
+  "residual_external_effects": [],
+  "run_id": "qualification-15b30017-cd85-4ed6-8761-61d8523dd386",
+  "schema_version": "1.0",
+  "started_at": "2026-08-24T17:26:50.282333Z",
+  "tools": [
+    {
+      "authentication": "not_checked",
+      "available": true,
+      "endpoint_identity": null,
+      "name": "git",
+      "version": "git version 2.55.0.windows.3"
+    },
+    {
+      "authentication": "unauthenticated",
+      "available": true,
+      "endpoint_identity": null,
+      "name": "codex",
+      "version": "codex-cli 0.147.0"
+    },
+    {
+      "authentication": "unauthenticated",
+      "available": true,
+      "endpoint_identity": null,
+      "name": "github-cli",
+      "version": "gh version 2.97.0 (2026-07-31)"
+    },
+    {
+      "authentication": "not_checked",
+      "available": false,
+      "endpoint_identity": null,
+      "name": "docker",
+      "version": null
+    },
+    {
+      "authentication": "not_checked",
+      "available": false,
+      "endpoint_identity": null,
+      "name": "podman",
+      "version": null
+    }
+  ],
+  "versions": {
+    "ipc": "1.0",
+    "mcp": "1.0",
+    "migration_head": 10,
+    "package": "0.8.0",
+    "plugin": "0.1.0",
+    "product": "0.8.0",
+    "runtime_api": "1.0",
+    "schema_count": 36
+  }
+}
