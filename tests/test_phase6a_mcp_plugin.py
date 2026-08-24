@@ -16,7 +16,7 @@ class FakeClient:
         return {"operation": operation, "persisted": True}
 
 
-def test_mcp_exposes_exactly_five_bounded_tools(tmp_path: Path) -> None:
+def test_mcp_preserves_phase6a_prefix_and_exposes_bounded_phase6d_tools(tmp_path: Path) -> None:
     server = MCPServer(tmp_path)
     incompatible = server.handle(
         {
@@ -31,7 +31,23 @@ def test_mcp_exposes_exactly_five_bounded_tools(tmp_path: Path) -> None:
     response = server.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
     assert response is not None
     tools = response["result"]["tools"]
-    assert [tool["name"] for tool in tools] == ["start", "message", "confirm", "status", "report"]
+    names = [tool["name"] for tool in tools]
+    assert names[:5] == ["start", "message", "confirm", "status", "report"]
+    assert names == [
+        "start",
+        "message",
+        "confirm",
+        "status",
+        "report",
+        "run",
+        "pause",
+        "resume",
+        "interrupt",
+        "cancel",
+        "accept",
+        "reject",
+        "revise",
+    ]
     assert tools == TOOLS
     assert all(tool["inputSchema"]["additionalProperties"] is False for tool in tools)
 

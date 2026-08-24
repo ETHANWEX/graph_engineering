@@ -104,6 +104,12 @@ class StateStore:
                     "INSERT INTO schema_migrations(version, applied_at) VALUES (9, ?)",
                     (timestamp(),),
                 )
+            if 10 not in applied:
+                connection.executescript(_MIGRATION_10)
+                connection.execute(
+                    "INSERT INTO schema_migrations(version, applied_at) VALUES (10, ?)",
+                    (timestamp(),),
+                )
             connection.commit()
 
     @property
@@ -150,7 +156,13 @@ class StateStore:
 
     @property
     def container_migration_version(self) -> int:
-        """Actual storage head including Phase 6C container execution state."""
+        """Compatibility level through Phase 6C; use autonomous delivery head for storage."""
+
+        return min(self.autonomous_delivery_migration_version, 9)
+
+    @property
+    def autonomous_delivery_migration_version(self) -> int:
+        """Actual storage head including Phase 6D durable delivery coordination."""
 
         with self.read_connection() as connection:
             row = connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()
@@ -823,4 +835,34 @@ CREATE TABLE container_executions (
 );
 CREATE INDEX container_executions_run_state
 ON container_executions(run_id, state, node_id);
+"""
+
+_MIGRATION_10 = """
+CREATE TABLE run_start_requests (
+    idempotency_key TEXT PRIMARY KEY,
+    request_id TEXT NOT NULL,
+    run_id TEXT NOT NULL,
+    request_fingerprint TEXT NOT NULL,
+    state TEXT NOT NULL,
+    result_json TEXT,
+    error_code TEXT,
+    created_at TEXT NOT NULL,
+    completed_at TEXT
+);
+CREATE INDEX run_start_requests_run_state ON run_start_requests(run_id, state);
+
+CREATE TABLE delivery_stage_checkpoints (
+    run_id TEXT NOT NULL,
+    stage TEXT NOT NULL,
+    attempt_identity TEXT NOT NULL,
+    status TEXT NOT NULL,
+    classification TEXT,
+    artifact_refs_json TEXT NOT NULL DEFAULT '[]',
+    external_effect_key TEXT,
+    external_handle TEXT,
+    result_json TEXT,
+    created_at TEXT NOT NULL,
+    completed_at TEXT,
+    PRIMARY KEY(run_id, stage, attempt_identity)
+);
 """

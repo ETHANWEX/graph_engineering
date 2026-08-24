@@ -1,6 +1,12 @@
-"""Phase 5 review, evidence, GitHub, report, and Human delivery boundary."""
+"""Review, evidence, durable coordination, delivery, and Human decision boundary."""
 
 from .control import HumanDecisionService
+from .coordinator import (
+    AutonomousDeliveryCoordinator,
+    AutonomousRunResult,
+    RunStartError,
+    RunStartUncertainError,
+)
 from .github import (
     GitHubChecksMonitor,
     GitHubChecksProvider,
@@ -38,6 +44,8 @@ from .report import DeliveryReportCompiler
 from .review import MultidimensionalReviewRunner, ReviewAttemptRepository, aggregate_reviews
 
 __all__ = [
+    "AutonomousDeliveryCoordinator",
+    "AutonomousRunResult",
     "CheckConclusion",
     "CheckStatus",
     "DeliveryBundle",
@@ -70,6 +78,8 @@ __all__ = [
     "ReviewFinding",
     "ReviewStatus",
     "ReviewVerdict",
+    "RunStartError",
+    "RunStartUncertainError",
     "aggregate_reviews",
     "render_pull_request_body",
 ]

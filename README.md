@@ -2,16 +2,14 @@
 
 Graph Engineering 是一个面向自治软件开发的图工程控制层。Human 通过自然语言定义需求和授权边界、随时查询或中断开发，并最终验收成果；Graph Runtime 在冻结的 Contract 内组织 Coding Agent、确定性工具、Verifier、反馈循环和外部系统，持续完成实现、验证、修复、审查与证据交付。
 
-> 当前状态：Phase 0–5 已进入远端 `main`；Phase 6A、6B 与 Recovery Gate R0 位于
-> `phase/6-enhancements`，Phase 6C delivery 是 R0 baseline `b7da3c4` 的单一 child commit，其 SHA
-> 在创建后通过 Git 核实。Human 已于
-> Phase 6C Container Verifiers 实现与 deterministic evidence 已通过 Human Review，单一
-> delivery commit 和 Phase 6 分支 push 已获授权；PR、main 修改/merge、Plugin 安装发布和
-> Phase 6D 实现仍未授权。
+> 当前状态：Phase 6D Autonomous Delivery Closure 已在 `phase/6-enhancements` 上完成实现与验证，精确
+> baseline 为 Phase 6C delivery `50f1d0a47d6c210c407af79b5c00e73b43ea984e`。本阶段实现已获
+> 授权，但 delivery commit、push、PR、main 修改/merge、Plugin 安装发布、真实外部写入和
+> Phase 6E 均未授权；全部 Phase 6D 结果保持未提交等待 Human Review。
 
 ## 已实现能力
 
-Phase 0–6B 当前工作树提供：
+Phase 0–6D 当前工作树提供：
 
 - Python 3.12–3.13、Pydantic v2 和 Typer 的可安装 `src` layout 包。
 - 版本化 Task Contract、Execution Graph、Result、Control、Run 关系和 Report 协议。
@@ -76,7 +74,8 @@ Phase 0–6B 当前工作树提供：
   Windows 子进程退出与 Runtime 重启后从 SQLite 恢复 Conversation/Run 路由。
 - versioned/authenticated loopback IPC、project/workspace/request/idempotency identity、typed error、
   有限 frame/timeout/retry，以及 mutation replay ledger；查询路径不写 Runtime 状态。
-- `ge mcp-server` 的 `start/message/confirm/status/report` 五个严格工具；全部复用 Human Gateway、
+- `ge mcp-server` 保留 `start/message/confirm/status/report` 五工具兼容前缀，并加法提供
+  `run/pause/resume/interrupt/cancel/accept/reject/revise`；全部复用 Human Gateway、
   HumanMessage、Intent Compiler、确认策略、强类型 Runtime control 和只读 report/status API。
 - 仓库内 `plugins/graph-engineering` Codex Plugin（manifest、Skill、MCP config）；它不保存权威
   Run 状态，也不直接写 SQLite/worktree/external handle。
@@ -96,8 +95,15 @@ Phase 0–6B 当前工作树提供：
 - SQLite migration 9 持久化 container owner/attempt/handle/digest/fingerprint/result/cleanup/
   residual state；恢复查询已有 handle、不重复启动，cleanup 失败进入 Event、Artifact
   和 Final Report。历史 migration compatibility views 保持。
-- 215 个 pytest collected 实例（211 passed / 4 个真实 Codex 实例默认跳过）；mypy strict、Ruff、
-  36-schema drift、Graph CLI 和 migration 1–9 repeatability 全部通过。
+- confirmation 与 Run start 是独立幂等动作；durable coordinator 复用 Graph Runtime 完成
+  Implementer→Verifier/repair→fresh Review/review-fix→delivery→十文件 Final Report，unknown
+  start/provider effect fail closed，accept 永不 merge，revise 创建不可变 successor lineage。
+- `ge run/status --watch/pause/resume/interrupt/cancel/report --live/accept/reject/revise` 是 typed
+  Runtime/API route；deterministic local Git fixture 明确不冒充真实 Codex/GitHub/container E2E。
+- SQLite migration 10 保存 start claim 与 delivery stage checkpoint，并保持 migration 1–10、
+  historical database 和旧 compatibility view 可读。
+- 225 个 pytest collected 实例（221 passed / 4 个真实 Codex 实例默认跳过）；mypy strict、Ruff、
+  36-schema drift、Graph CLI 和 migration 1–10 repeatability 全部通过。
 
 开发安装：
 
@@ -294,11 +300,11 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
   `db7dd54` / `4ebeb2d`。
 - 当前分支：`phase/6-enhancements`；Phase 6C delivery 是 R0 delivery
   `b7da3c4c7712db0f8fb01f14cd2d141008c5186a` 的单一 child commit，本地/远端 SHA 在推送后核实。
-- 当前活动门禁：Phase 6C Container Verifiers 实现与 deterministic acceptance evidence
-  已通过 Human Review，单一 delivery commit/push 已获授权。真实容器 E2E 因宿主无 Docker/Podman
-  而明确 unverified，fixture 证据不冒充真实隔离证据。
+- 当前活动门禁：Phase 6D Autonomous Delivery Closure 已完成实现与双 Python 验证，所有
+  结果保持未提交并等待 Human Review。Contract confirmation 仅创建冻结输入与 prepared Run；
+  只有独立的显式 `ge run` 才能启动既有 Graph Runtime。
 - 当前未授权：Graph Engineering PR、main 修改、merge/auto-merge、Plugin 安装/发布、
-  真实外部写入或 Phase 6D 实现。
+  真实外部写入、Phase 6D delivery commit/push 或 Phase 6E 实现。
 - GitHub CLI 2.97.0 已安装，`pr`、`run`、`api` 命令入口可用；当前未登录任何 GitHub host，
   因此私有仓库读取和真实 GitHub E2E 仍保持未验证。隔离 provider fixture 不冒充真实 E2E。
 - 当前设计：[DESIGN.md](DESIGN.md)
@@ -327,6 +333,8 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 - Phase 6C 范围：[docs/phases/phase-6c.md](docs/phases/phase-6c.md)
 - Phase 6C 交接：[docs/phases/phase-6c-handoff.md](docs/phases/phase-6c-handoff.md)
 - Phase 6D 启动 Prompt：[docs/prompts/phase-6d-start.md](docs/prompts/phase-6d-start.md)
+- Phase 6D 范围：[docs/phases/phase-6d.md](docs/phases/phase-6d.md)
+- Phase 6D 交接：[docs/phases/phase-6d-handoff.md](docs/phases/phase-6d-handoff.md)
 - 协作约定：[AGENTS.md](AGENTS.md)
 
 README 是项目对外的首要入口。每个阶段完成时都必须同步更新这里的架构、已实现能力、安装方式、示例命令和限制，避免 README 描述超前于代码。

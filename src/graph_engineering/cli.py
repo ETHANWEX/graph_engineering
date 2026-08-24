@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -76,7 +77,7 @@ def mcp_server_command(
         Path, typer.Option("--project-root", exists=True, file_okay=False, resolve_path=True)
     ] = Path("."),
 ) -> None:
-    """Serve the five Graph Engineering MCP tools over stdio."""
+    """Serve the strict Graph Engineering MCP control surface over stdio."""
 
     from graph_engineering.mcp_server import run_mcp_server
 
@@ -89,10 +90,231 @@ def _delivery_paths(run_id: str, state_db: Path | None) -> tuple[Path, Path, Pat
     return database, root / "artifacts", root / "reports"
 
 
+def _fixture_boundaries(project_root: Path, run_id: str) -> tuple[Any, Any]:
+    """Build deterministic in-process boundaries explicitly labelled as fixture evidence."""
+
+    from graph_engineering.models.common import ArtifactKind
+    from graph_engineering.models.results import (
+        ExecutorResult,
+        ExecutorStatus,
+        VerifierResult,
+        VerifierStatus,
+    )
+    from graph_engineering.runtime import ArtifactStore, FakeExecutor, FakeVerifier
+
+    control = StateStore(project_root / ".ge" / "control" / "phase3.db")
+    with control.read_connection() as connection:
+        row = connection.execute(
+            "SELECT graph_json FROM planned_runs WHERE run_id=?", (run_id,)
+        ).fetchone()
+    if row is None:
+        raise typer.BadParameter("prepared Run was not found")
+    graph = ExecutionGraph.model_validate_json(str(row["graph_json"]))
+    git = subprocess.run(
+        ["git", "-C", str(project_root), "rev-parse", "--verify", "HEAD^{commit}"],
+        text=True,
+        capture_output=True,
+        check=False,
+        shell=False,
+    )
+    if git.returncode != 0:
+        raise typer.BadParameter("deterministic Git fixture requires a real local Git repository")
+    diff = subprocess.run(
+        ["git", "-C", str(project_root), "diff", "--binary", "HEAD"],
+        text=True,
+        capture_output=True,
+        check=False,
+        shell=False,
+    )
+    if diff.returncode != 0:
+        raise typer.BadParameter("deterministic Git fixture could not read the local diff")
+    patch = ArtifactStore(project_root / ".ge" / "runs" / run_id / "artifacts").put_bytes(
+        diff.stdout.encode("utf-8"), media_type="text/x-diff", kind=ArtifactKind.PATCH
+    )
+
+    def success() -> ExecutorResult:
+        return ExecutorResult(
+            schema_version="1.0",
+            status=ExecutorStatus.SUCCEEDED,
+            summary="deterministic fixture",
+        )
+
+    scripts = {
+        node.node_id: [success() for _ in range(4)]
+        for node in graph.nodes
+        if node.node_type.value != "verifier"
+    }
+    if "deliver" in scripts:
+        scripts["deliver"] = [
+            ExecutorResult(
+                schema_version="1.0",
+                status=ExecutorStatus.SUCCEEDED,
+                summary=f"deterministic local Git fixture at {git.stdout.strip()}",
+                artifacts=[patch],
+            )
+        ]
+    executor = FakeExecutor(scripts)
+    verifier = FakeVerifier(
+        {
+            node.node_id: [
+                VerifierResult(
+                    schema_version="1.0",
+                    status=VerifierStatus.PASSED,
+                    summary="deterministic fixture passed",
+                )
+                for _ in range(4)
+            ]
+            for node in graph.nodes
+            if node.node_type.value == "verifier"
+        }
+    )
+    return executor, verifier
+
+
+@app.command("run")
+def run_prepared(
+    run_id: str,
+    project_root: Annotated[Path, typer.Option("--project-root", file_okay=False)] = Path("."),
+    request_id: Annotated[str | None, typer.Option("--request-id")] = None,
+    idempotency_key: Annotated[str | None, typer.Option("--idempotency-key")] = None,
+    deterministic_fixture: Annotated[bool, typer.Option("--deterministic-fixture")] = False,
+) -> None:
+    """Explicitly start a prepared durable Run (fixture provider is visibly opt-in)."""
+
+    if not deterministic_fixture:
+        raise typer.BadParameter(
+            "this checkout requires an explicitly configured executor; "
+            "--deterministic-fixture is test evidence, not real Codex/GitHub E2E"
+        )
+    from graph_engineering.delivery import AutonomousDeliveryCoordinator
+
+    root = project_root.resolve()
+    executor, verifier = _fixture_boundaries(root, run_id)
+    result = AutonomousDeliveryCoordinator(root, executor=executor, verifier=verifier).run(
+        run_id,
+        request_id=request_id or f"request:{uuid.uuid4()}",
+        idempotency_key=idempotency_key or f"run-start:{run_id}",
+    )
+    typer.echo(json.dumps(result.__dict__, sort_keys=True))
+
+
+@app.command("status")
+def status_run(
+    run_id: str,
+    state_db: Annotated[Path | None, typer.Option("--state-db")] = None,
+    watch: Annotated[bool, typer.Option("--watch")] = False,
+) -> None:
+    """Read a persisted Runtime status snapshot; watch emits one bounded snapshot per invocation."""
+
+    database, _, _ = _delivery_paths(run_id, state_db)
+    state = StateStore(database)
+    with state.read_connection() as connection:
+        run = connection.execute(
+            "SELECT run_id,project_id,status,barrier,current_node_id,terminal_reason,updated_at "
+            "FROM runs WHERE run_id=?",
+            (run_id,),
+        ).fetchone()
+        if run is None:
+            raise typer.BadParameter("Run was not found")
+        nodes = [
+            dict(row)
+            for row in connection.execute(
+                "SELECT node_id,status,attempt_count FROM nodes WHERE run_id=? ORDER BY node_id",
+                (run_id,),
+            )
+        ]
+    typer.echo(json.dumps({"run": dict(run), "nodes": nodes, "watch": watch}, sort_keys=True))
+
+
+def _control_run(run_id: str, action: str, state_db: Path | None) -> None:
+    from graph_engineering.models import ControlReason, StateChangeControlIntent
+    from graph_engineering.models.control import (
+        ControlReasonCode,
+        StateChangeAction,
+        Urgency,
+    )
+    from graph_engineering.runtime import FakeExecutor, FakeVerifier, GraphRuntime
+
+    database, _, _ = _delivery_paths(run_id, state_db)
+    state = StateStore(database)
+    with state.read_connection() as connection:
+        row = connection.execute(
+            "SELECT graph_json,contract_hash FROM runs WHERE run_id=?", (run_id,)
+        ).fetchone()
+    if row is None:
+        raise typer.BadParameter("Run was not found")
+    runtime = GraphRuntime(database.parent, executor=FakeExecutor(), verifier=FakeVerifier())
+    runtime.recover(
+        run_id,
+        ExecutionGraph.model_validate_json(str(row["graph_json"])),
+        str(row["contract_hash"]),
+    )
+    intent = StateChangeControlIntent(
+        schema_version="1.0",
+        intent_kind="state_change",
+        intent_id=f"cli:{action}:{uuid.uuid4()}",
+        source_message_id=f"cli-message:{uuid.uuid4()}",
+        actor_id="human",
+        project_id="project",
+        run_id=run_id,
+        action=StateChangeAction(action),
+        reason=ControlReason(schema_version="1.0", code=ControlReasonCode.HUMAN_REQUEST),
+        urgency=Urgency.IMMEDIATE,
+        confidence=1.0,
+        requires_confirmation=False,
+    )
+    typer.echo(runtime.control(intent).model_dump_json())
+
+
+@app.command("pause")
+def pause_run(
+    run_id: str, state_db: Annotated[Path | None, typer.Option("--state-db")] = None
+) -> None:
+    _control_run(run_id, "pause", state_db)
+
+
+@app.command("resume")
+def resume_run(
+    run_id: str, state_db: Annotated[Path | None, typer.Option("--state-db")] = None
+) -> None:
+    _control_run(run_id, "resume", state_db)
+
+
+@app.command("interrupt")
+def interrupt_run(
+    run_id: str, state_db: Annotated[Path | None, typer.Option("--state-db")] = None
+) -> None:
+    _control_run(run_id, "interrupt", state_db)
+
+
+@app.command("cancel")
+def cancel_run(
+    run_id: str, state_db: Annotated[Path | None, typer.Option("--state-db")] = None
+) -> None:
+    from graph_engineering.runtime import FakeExecutor, FakeVerifier, GraphRuntime
+
+    database, _, _ = _delivery_paths(run_id, state_db)
+    runtime = GraphRuntime(database.parent, executor=FakeExecutor(), verifier=FakeVerifier())
+    with runtime.state.read_connection() as connection:
+        row = connection.execute(
+            "SELECT graph_json,contract_hash FROM runs WHERE run_id=?", (run_id,)
+        ).fetchone()
+    if row is None:
+        raise typer.BadParameter("Run was not found")
+    runtime.recover(
+        run_id,
+        ExecutionGraph.model_validate_json(str(row["graph_json"])),
+        str(row["contract_hash"]),
+    )
+    runtime.cancel(run_id)
+    typer.echo(json.dumps({"run_id": run_id, "status": "cancelled"}, sort_keys=True))
+
+
 @app.command("report")
 def report_run(
     run_id: str,
     state_db: Annotated[Path | None, typer.Option("--state-db")] = None,
+    live: Annotated[bool, typer.Option("--live")] = False,
 ) -> None:
     """Read the latest immutable delivery-report revision without mutation."""
 
@@ -100,10 +322,20 @@ def report_run(
     from graph_engineering.runtime import ArtifactStore
 
     database, artifacts, reports = _delivery_paths(run_id, state_db)
-    bundle = DeliveryReportCompiler(StateStore(database), ArtifactStore(artifacts), reports).latest(
-        run_id
-    )
-    typer.echo(bundle.model_dump_json())
+    if live:
+        with StateStore(database).read_connection() as connection:
+            row = connection.execute(
+                "SELECT run_id,status,barrier,current_node_id,updated_at FROM runs WHERE run_id=?",
+                (run_id,),
+            ).fetchone()
+        if row is None:
+            raise typer.BadParameter("Run was not found")
+        typer.echo(json.dumps(dict(row), sort_keys=True))
+    else:
+        bundle = DeliveryReportCompiler(
+            StateStore(database), ArtifactStore(artifacts), reports
+        ).latest(run_id)
+        typer.echo(bundle.model_dump_json())
 
 
 @app.command("accept")
@@ -113,6 +345,7 @@ def accept_run(
     report_revision: Annotated[int, typer.Option("--report-revision", min=1)] = 1,
     actor_id: Annotated[str, typer.Option("--actor-id")] = "human",
     project_id: Annotated[str, typer.Option("--project-id")] = "project",
+    project_root: Annotated[Path, typer.Option("--project-root", file_okay=False)] = Path("."),
 ) -> None:
     """Record confirmed Human acceptance; this never merges."""
 
@@ -122,9 +355,17 @@ def accept_run(
     human = _human_message(
         f"confirm accept {run_id}", actor_id=actor_id, project_id=project_id, run_id=run_id
     )
-    record = HumanDecisionService(StateStore(database)).accept(
-        human, report_revision=report_revision
-    )
+    if state_db is None:
+        from graph_engineering.delivery import AutonomousDeliveryCoordinator
+        from graph_engineering.runtime import FakeExecutor, FakeVerifier
+
+        record = AutonomousDeliveryCoordinator(
+            project_root.resolve(), executor=FakeExecutor(), verifier=FakeVerifier()
+        ).decide("accept", human, report_revision=report_revision)
+    else:
+        record = HumanDecisionService(StateStore(database)).accept(
+            human, report_revision=report_revision
+        )
     typer.echo(record.model_dump_json())
 
 
@@ -136,6 +377,7 @@ def reject_run(
     report_revision: Annotated[int, typer.Option("--report-revision", min=1)] = 1,
     actor_id: Annotated[str, typer.Option("--actor-id")] = "human",
     project_id: Annotated[str, typer.Option("--project-id")] = "project",
+    project_root: Annotated[Path, typer.Option("--project-root", file_okay=False)] = Path("."),
 ) -> None:
     """Record confirmed Human rejection and append a Contract revision."""
 
@@ -148,9 +390,52 @@ def reject_run(
         project_id=project_id,
         run_id=run_id,
     )
-    record = HumanDecisionService(StateStore(database)).reject(
-        human, reason=reason, report_revision=report_revision
+    if state_db is None:
+        from graph_engineering.delivery import AutonomousDeliveryCoordinator
+        from graph_engineering.runtime import FakeExecutor, FakeVerifier
+
+        record = AutonomousDeliveryCoordinator(
+            project_root.resolve(), executor=FakeExecutor(), verifier=FakeVerifier()
+        ).decide("reject", human, reason=reason, report_revision=report_revision)
+    else:
+        record = HumanDecisionService(StateStore(database)).reject(
+            human, reason=reason, report_revision=report_revision
+        )
+    typer.echo(record.model_dump_json())
+
+
+@app.command("revise")
+def revise_run(
+    run_id: str,
+    reason: Annotated[str, typer.Option("--reason", min=1)],
+    state_db: Annotated[Path | None, typer.Option("--state-db")] = None,
+    report_revision: Annotated[int, typer.Option("--report-revision", min=1)] = 1,
+    actor_id: Annotated[str, typer.Option("--actor-id")] = "human",
+    project_id: Annotated[str, typer.Option("--project-id")] = "project",
+    project_root: Annotated[Path, typer.Option("--project-root", file_okay=False)] = Path("."),
+) -> None:
+    """Append a Human revision decision and immutable successor lineage."""
+
+    from graph_engineering.delivery import HumanDecisionService
+
+    database, _, _ = _delivery_paths(run_id, state_db)
+    human = _human_message(
+        f"confirm revise {run_id}: {reason}",
+        actor_id=actor_id,
+        project_id=project_id,
+        run_id=run_id,
     )
+    if state_db is None:
+        from graph_engineering.delivery import AutonomousDeliveryCoordinator
+        from graph_engineering.runtime import FakeExecutor, FakeVerifier
+
+        record = AutonomousDeliveryCoordinator(
+            project_root.resolve(), executor=FakeExecutor(), verifier=FakeVerifier()
+        ).decide("revise", human, reason=reason, report_revision=report_revision)
+    else:
+        record = HumanDecisionService(StateStore(database)).revise(
+            human, reason=reason, report_revision=report_revision
+        )
     typer.echo(record.model_dump_json())
 
 

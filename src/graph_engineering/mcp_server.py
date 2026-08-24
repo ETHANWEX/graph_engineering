@@ -1,4 +1,4 @@
-"""Minimal MCP stdio adapter for the five Phase 6A Human Gateway tools."""
+"""Strict MCP stdio adapter for the Graph Engineering Human Gateway tools."""
 
 from __future__ import annotations
 
@@ -81,6 +81,36 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
 ]
+
+_MUTATION_PROPERTIES = {
+    "run_id": _COMMON_ID,
+    "request_id": _COMMON_ID,
+    "idempotency_key": _COMMON_ID,
+    "conversation_id": _COMMON_ID,
+    "message_id": _COMMON_ID,
+    "content": {"type": "string", "minLength": 1, "maxLength": 65536},
+    "reason": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "report_revision": {"type": "string", "minLength": 1, "maxLength": 16},
+    "provider": {"type": "string", "minLength": 1, "maxLength": 64},
+}
+for _name in ("run", "pause", "resume", "interrupt", "cancel", "accept", "reject", "revise"):
+    _required = ["run_id", "request_id", "idempotency_key"]
+    if _name == "run":
+        _required.append("provider")
+    if _name in {"reject", "revise"}:
+        _required.append("reason")
+    TOOLS.append(
+        {
+            "name": _name,
+            "description": f"Route typed {_name} control through the authoritative Runtime.",
+            "inputSchema": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": _required,
+                "properties": dict(_MUTATION_PROPERTIES),
+            },
+        }
+    )
 
 
 class MCPServer:

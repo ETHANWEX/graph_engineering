@@ -23,7 +23,19 @@ from .protocol import (
     ServiceErrorCode,
 )
 
-_MUTATIONS = {"start", "message", "confirm"}
+_MUTATIONS = {
+    "start",
+    "message",
+    "confirm",
+    "run",
+    "pause",
+    "resume",
+    "interrupt",
+    "cancel",
+    "accept",
+    "reject",
+    "revise",
+}
 
 
 class RuntimeService:

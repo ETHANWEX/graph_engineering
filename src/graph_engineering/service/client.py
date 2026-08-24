@@ -34,7 +34,7 @@ class ServiceClient:
         versions = descriptor.get("versions")
         if not isinstance(versions, dict):
             raise RuntimeError("Runtime Service version metadata is unavailable")
-        if not str(versions.get("package", "")).startswith("0.7."):
+        if not str(versions.get("package", "")).startswith("0.8."):
             raise RuntimeError("graph-engineering package version is incompatible")
         if str(versions.get("runtime_api", "")).split(".")[0] != "1":
             raise RuntimeError("Runtime Service API version is incompatible")

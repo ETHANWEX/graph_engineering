@@ -620,7 +620,7 @@ def test_migration_9_is_repeatable_and_preserves_compatibility(tmp_path: Path) -
     with state.read_connection() as connection:
         versions = [row[0] for row in connection.execute("SELECT version FROM schema_migrations")]
         columns = {row[1] for row in connection.execute("PRAGMA table_info(container_executions)")}
-    assert versions == list(range(1, 10))
+    assert versions == list(range(1, 11))
     assert {"owner_id", "handle", "image_digest", "config_fingerprint", "cleanup_state"} <= columns
 
 

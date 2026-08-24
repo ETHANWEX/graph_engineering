@@ -42,7 +42,23 @@ class IPCRequest(BaseModel):
     idempotency_key: str = Field(min_length=1, max_length=256)
     project_id: str = Field(min_length=1, max_length=256)
     workspace_id: str = Field(min_length=1, max_length=128)
-    operation: Literal["health", "start", "message", "confirm", "status", "report", "shutdown"]
+    operation: Literal[
+        "health",
+        "start",
+        "message",
+        "confirm",
+        "run",
+        "status",
+        "report",
+        "pause",
+        "resume",
+        "interrupt",
+        "cancel",
+        "accept",
+        "reject",
+        "revise",
+        "shutdown",
+    ]
     authorization: str = Field(min_length=32, max_length=256, repr=False)
     payload: dict[str, Any] = Field(default_factory=dict)
 

@@ -39,7 +39,7 @@ def test_migration_7_is_repeatable_and_preserves_phase5_compatibility(tmp_path: 
     with state.read_connection() as connection:
         versions = [row[0] for row in connection.execute("SELECT version FROM schema_migrations")]
         columns = {row[1] for row in connection.execute("PRAGMA table_info(pending_confirmations)")}
-    assert versions == list(range(1, 10))
+    assert versions == list(range(1, 11))
     assert state.parallel_migration_version == 8
     assert {"actor_id", "project_id", "protocol_major", "expires_at"} <= columns
 
@@ -59,7 +59,7 @@ def test_service_health_idempotent_replay_conflict_and_controlled_cleanup(
     client = ServiceClient(tmp_path)
     health = client.call("health")
     assert health["healthy"] is True
-    assert health["versions"] == {"ipc": "1.0", "package": "0.7.0", "runtime_api": "1.0"}
+    assert health["versions"] == {"ipc": "1.0", "package": "0.8.0", "runtime_api": "1.0"}
 
     request_id = "request:start-1"
     key = "idempotency:start-1"
@@ -350,7 +350,9 @@ def test_isolated_mcp_stdio_to_runtime_service_e2e(tmp_path: Path) -> None:
             process.stdin.flush()
             responses.append(json.loads(process.stdout.readline()))
         assert responses[0]["result"]["serverInfo"]["version"] == "1.0"
-        assert len(responses[1]["result"]["tools"]) == 5
+        tool_names = [item["name"] for item in responses[1]["result"]["tools"]]
+        assert tool_names[:5] == ["start", "message", "confirm", "status", "report"]
+        assert len(tool_names) == 13
         assert responses[2]["result"]["isError"] is False
     finally:
         process.stdin.close()

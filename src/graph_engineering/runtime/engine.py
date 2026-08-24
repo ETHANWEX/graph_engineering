@@ -57,7 +57,6 @@ from graph_engineering.models.results import (
 from .artifacts import ArtifactStore
 from .errors import RecoveryError, RuntimeInvariantError
 from .events import EventStore
-from .fakes import FakeExecutor
 from .parallel import ParallelCoordinator
 from .store import StateStore, timestamp, utc_now
 from .types import RunSnapshot
@@ -84,6 +83,10 @@ class RuntimeVerifier(Protocol):
     def query(self, handle: str) -> VerifierResult: ...
 
 
+class RuntimeExecutor(Protocol):
+    def execute(self, run_id: str, node: Node, attempt_id: str) -> ExecutorResult: ...
+
+
 class GraphRuntime:
     """A synchronous serial scheduler around deterministic Fake boundaries."""
 
@@ -91,7 +94,7 @@ class GraphRuntime:
         self,
         root: Path,
         *,
-        executor: FakeExecutor,
+        executor: RuntimeExecutor,
         verifier: RuntimeVerifier,
         clock: Callable[[], datetime] = utc_now,
     ) -> None:

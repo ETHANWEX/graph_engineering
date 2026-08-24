@@ -222,6 +222,37 @@ class DeliveryReportCompiler:
                 "supersedes_run_id": source["supersedes_run_id"] if fixture is None else None,
                 "restart_from": source["restart_from_json"] if fixture is None else None,
             }
+            stages = [
+                dict(row)
+                for row in connection.execute(
+                    "SELECT stage,attempt_identity,status,classification,artifact_refs_json,"
+                    "external_effect_key,external_handle,created_at,completed_at "
+                    "FROM delivery_stage_checkpoints WHERE run_id=? ORDER BY created_at,stage",
+                    (run_id,),
+                )
+            ]
+            attempts = [
+                dict(row)
+                for row in connection.execute(
+                    "SELECT attempt_id,node_id,attempt_number,status,result_json,started_at,finished_at "
+                    "FROM attempts WHERE run_id=? ORDER BY started_at,attempt_id",
+                    (run_id,),
+                )
+            ]
+            parallel = [
+                dict(row)
+                for row in connection.execute(
+                    "SELECT container_node_id,branch_id,status,current_node_id,result_json "
+                    "FROM parallel_branches WHERE run_id=? ORDER BY container_node_id,branch_order",
+                    (run_id,),
+                )
+            ]
+            identities = {
+                "project_id": source["project_id"] if fixture is None else None,
+                "contract_hash": source["contract_hash"] if fixture is None else None,
+                "graph_id": source["graph_id"] if fixture is None else None,
+                "graph_hash": source["graph_hash"] if fixture is None else None,
+            }
         return {
             "run_id": run_id,
             "contract_id": contract_id,
@@ -239,6 +270,10 @@ class DeliveryReportCompiler:
             "patch_texts": patch_texts,
             "verifier_manifests": verifier_manifests,
             "relationship": relationship,
+            "identities": identities,
+            "stages": stages,
+            "attempts": attempts,
+            "parallel": parallel,
         }
 
     @staticmethod
@@ -251,7 +286,11 @@ class DeliveryReportCompiler:
                 for reference in manifest.get("capabilities", {}).get("secrets", [])
             }
         )
-        summary = f"# Run {facts['run_id']}\n\nTerminal status: **{facts['status']}**\n\nTerminal reason: {facts['reason']}\n\nContract: {facts['contract_id']} r{facts['contract_revision']}\n\nDelivery succeeded: {'yes' if success else 'no'}\n\nLineage: `{json.dumps(facts['relationship'], sort_keys=True)}`\n\nSecret references (names only): {', '.join(secret_refs) if secret_refs else 'none'}\n\nReproduce using the frozen Contract, exact Git baseline/target, and referenced evidence artifacts.\n"
+        residual = [item for item in facts["effects"] if item.get("residual_effect")]
+        cleanup_failures = [
+            item for item in facts["effects"] if item.get("cleanup_state") == "failed"
+        ]
+        summary = f"# Run {facts['run_id']}\n\nTerminal status: **{facts['status']}**\n\nTerminal reason: {facts['reason']}\n\nProject/Contract/Graph identities: `{json.dumps(facts['identities'], sort_keys=True)}`\n\nContract: {facts['contract_id']} r{facts['contract_revision']}\n\nDelivery succeeded: {'yes' if success else 'no'}\n\nLineage: `{json.dumps(facts['relationship'], sort_keys=True)}`\n\nStage classifications: `{json.dumps([item['classification'] for item in facts['stages']], sort_keys=True)}`\n\nSecret references (names only): {', '.join(secret_refs) if secret_refs else 'none'}\n\nCleanup failures: {len(cleanup_failures)}. Residual/unknown effects: {len(residual)}.\n\nRecovery/revision guidance: reuse persisted checkpoints and handles; never repeat an uncertain trigger. Direction changes require a new immutable Contract revision, confirmation, and explicit Run start.\n\nReproduce using the frozen Contract, exact Git baseline/target, and referenced evidence artifacts.\n"
         matrix = facts["matrix"]
         matrix_md = (
             "# Requirement Matrix\n\nNo frozen matrix exists; all criteria remain unverified.\n"
@@ -262,7 +301,11 @@ class DeliveryReportCompiler:
         )
         review_md = (
             "# Review Report\n\n```json\n"
-            + json.dumps(facts["reviews"], indent=2, sort_keys=True)
+            + json.dumps(
+                {"dimensions": facts["reviews"], "stage_history": facts["stages"]},
+                indent=2,
+                sort_keys=True,
+            )
             + "\n```\n"
         )
         return {
@@ -277,11 +320,25 @@ class DeliveryReportCompiler:
                         for item in facts["artifacts"]
                         if item["role"] == "verifier"
                     ],
+                    "attempt_history": [
+                        item
+                        for item in facts["attempts"]
+                        if str(item["node_id"]).startswith("verify.")
+                    ],
                 },
                 indent=2,
             ),
             "review-report.md": review_md,
-            "execution-trace.json": json.dumps(facts["events"], indent=2, sort_keys=True),
+            "execution-trace.json": json.dumps(
+                {
+                    "events": facts["events"],
+                    "attempts": facts["attempts"],
+                    "parallel_branch_settlement": facts["parallel"],
+                    "delivery_stages": facts["stages"],
+                },
+                indent=2,
+                sort_keys=True,
+            ),
             "cost-report.json": json.dumps(facts["budget"], indent=2, sort_keys=True),
             "pull-request.json": json.dumps(facts["pr"], indent=2, sort_keys=True),
             "control-history.json": json.dumps(

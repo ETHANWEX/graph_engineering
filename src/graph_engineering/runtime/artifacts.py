@@ -31,7 +31,9 @@ class ArtifactStore:
             if target.read_bytes() != content:
                 raise RuntimeError("artifact digest collision")
         else:
-            temporary = target.with_name(f".{target.name}.{uuid.uuid4().hex}.tmp")
+            # Keep the atomic sibling name short enough for traditional Windows paths.
+            # The content digest is already represented by the parent target name.
+            temporary = target.with_name(f".tmp-{uuid.uuid4().hex}")
             with temporary.open("xb") as stream:
                 stream.write(content)
                 stream.flush()

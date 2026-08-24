@@ -1,0 +1,14 @@
+{
+  "protocol_version": "1.0",
+  "request_id": "request-pause-fixture",
+  "idempotency_key": "pause-fixture",
+  "project_id": "project",
+  "workspace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "authorization": "fixture-capability-reference-00000000",
+  "operation": "pause",
+  "payload": {
+    "run_id": "run-fixture",
+    "request_id": "request-pause-fixture",
+    "idempotency_key": "pause-fixture"
+  }
+}

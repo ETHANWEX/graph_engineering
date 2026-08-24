@@ -1,0 +1,16 @@
+{
+  "jsonrpc": "2.0",
+  "id": "phase6d-run",
+  "method": "tools/call",
+  "params": {
+    "name": "run",
+    "arguments": {
+      "run_id": "run-fixture",
+      "request_id": "request-fixture",
+      "idempotency_key": "start-fixture",
+      "provider": "deterministic_git_fixture",
+      "content": "Explicitly start the prepared Run",
+      "message_id": "message-fixture"
+    }
+  }
+}

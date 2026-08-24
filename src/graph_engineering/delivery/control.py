@@ -109,7 +109,6 @@ class HumanDecisionService:
                         message.project_id,
                         revised,
                         source_run_id=message.run_id,
-                        run_id=f"run:{contract_id}:r{new_revision}:{uuid.uuid4().hex[:8]}",
                     )
                     new_run_id = planned.run_id
         decision = cast("Literal['accept', 'reject', 'revise']", action.value)

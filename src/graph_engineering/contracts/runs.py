@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 
 from graph_engineering.compiler import ExecutionGraphCompiler
@@ -45,7 +46,10 @@ class RunPlanner:
         ):
             raise ValueError("acceptance lock does not match the frozen Contract")
         graph = self.compiler.compile(contract)
-        planned_run_id = run_id or f"run:{contract.contract_id}:r{contract.revision}"
+        identity = hashlib.sha256(
+            f"{contract.contract_id}\0{contract.revision}\0{contract.sha256()}".encode()
+        ).hexdigest()[:24]
+        planned_run_id = run_id or f"run-{identity}"
         relationship = RunRelationship(
             schema_version="1.0",
             run_id=planned_run_id,
