@@ -1,5 +1,12 @@
 # Phase 6B Handoff
 
+> Post-handoff fact note (2026-08-23): the original handoff below is the pre-delivery review
+> snapshot. A later repository audit observed local and remote
+> `f9ee0b330a5a22a99d48cb787356445d044fb2ae` with subject `Deliver Phase 6B parallel graphs`.
+> Versioned repository documents did not initially establish the Human authorization provenance
+> for that commit/push. On 2026-08-24 the Human explicitly approved the exact SHA as the Phase 6B
+> delivery. Recovery Gate R0 records that decision without amending or rewriting history.
+
 - Status: implementation complete, uncommitted, and awaiting Human Review.
 - Branch: `phase/6-enhancements`.
 - Baseline/current committed HEAD: `55750075c7af208ebc508299752566a3f67eaeb5`.
@@ -63,7 +70,9 @@ present.
 - Schema export: 36 files; expected-output drift tests passed, exit 0.
 - Schema and migration focused suite: 10 passed in 2.70s, exit 0; migrations 1–8 remain repeatable.
 - Historical valid Graph CLI and Phase 6B valid Graph CLI exited 0. Historical invalid and Phase 6B
-  invalid Graph fixtures exited 1 with expected field-level validation errors.
+  invalid Graph fixtures exited 2 with expected field-level validation errors. The original
+  pre-delivery handoff incorrectly recorded exit 1; R0 reconciled this against the locked CLI test
+  and implementation contract.
 - Deterministic Windows tests cover bounded concurrency, opposite completion orders, shared call and
   cost races, failed/blocked aggregation, completed-node restart, checkpointed external handles,
   checkpoint inheritance, pause/resume unresolved-result routing, and active/pending interrupt and

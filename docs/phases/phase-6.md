@@ -1,6 +1,7 @@
 # Phase 6 Roadmap
 
-- Status: Planning complete; implementation not started.
+- Status: Recovery Gate R0 reviewed and approved on 2026-08-24; its single local delivery commit is
+  authorized. Push and Phase 6C start remain separately gated.
 - Baseline: `origin/main=eedc46d1a607c6169cb43eca79ef56bdd137efac`.
 - Branch: `phase/6-enhancements`.
 - Predecessor: Phase 5 implementation `db7dd54` and handoff
@@ -23,9 +24,10 @@ authorized merely by this roadmap. Each delivery action still requires explicit 
 
 ## Purpose
 
-Phase 0–5 form the Graph Engineering MVP. Phase 6 adds product integration, stronger scheduling and
-isolation, observability, and an optional Human-facing presentation layer without weakening the MVP
-contracts.
+Phase 0–5 form the component-level Graph Engineering MVP. Phase 6 first reconciles delivery truth
+and reproducibility, then adds isolation, closes the user-facing autonomous-delivery path, qualifies
+real integrations, and finally adds observability and an optional presentation layer without
+weakening the MVP contracts.
 
 ## Subphase roadmap
 
@@ -33,12 +35,16 @@ contracts.
 |---|---|---|
 | Phase 6A | Runtime/MCP/Plugin | Independent Runtime Service, versioned local IPC, MCP Server, and thin Codex Plugin |
 | Phase 6B | Parallel Graphs | Parallel nodes, subgraphs, deterministic join, bounded concurrency, recovery, budgets, and barriers |
+| Recovery Gate R0 | Delivery and baseline reconciliation | Resolve Phase 6B authorization provenance, repair status drift, restore reproducible verification, and reconcile old completion locks |
 | Phase 6C | Container Verifiers | Container provider, image policy, resource limits, mounts, networking, cancellation, and secret policy |
-| Phase 6D | Observability | OpenTelemetry traces and metrics correlated with persisted Runtime identities and safely redacted |
-| Phase 6E | Optional Project UI | Project/Run pages, live progress, evidence and reports, Human messages, and confirmation cards |
+| Phase 6D | Autonomous Delivery Closure | Connect confirmed Discovery to explicit Run execution, control, verification, review, PR/report delivery, and terminal Human decisions |
+| Phase 6E | Integration Qualification | Real Codex Plugin/MCP and GitHub E2E, supported-OS matrix, packaging/install/upgrade, and failure/recovery evidence |
+| Phase 6F | Observability | OpenTelemetry traces and metrics correlated with persisted Runtime identities and safely redacted |
+| Phase 6G | Optional Project UI | Project/Run pages, live progress, evidence and reports, Human messages, and confirmation cards |
 
-Additional Phase 6F–6N work may only be appended by an explicit Human decision that first updates
-this roadmap. Claude Code Adapter is intentionally unscheduled and is not part of Phase 6A–6E.
+This reordered roadmap is the explicit Human-requested response to the 2026-08-23 progress audit.
+Additional Phase 6H–6N work may only be appended by an explicit Human decision that first updates
+this roadmap. Claude Code Adapter remains intentionally unscheduled and is not part of Phase 6A–6G.
 
 ## Phase 6 invariants
 
@@ -124,6 +130,16 @@ pause, and interrupt barriers.
 - Barriers cover active and pending branches.
 - Existing serial Graph behavior remains compatible.
 
+## Recovery Gate R0: Delivery and Baseline Reconciliation
+
+R0 is a mandatory recovery gate, not a feature phase. Its scope and acceptance criteria are defined
+in `docs/phases/phase-6r.md`. Phase 6C must not start until R0 has an explicitly approved delivery
+record.
+
+R0 resolves the repository fact that `f9ee0b330a5a22a99d48cb787356445d044fb2ae` exists locally and
+on `origin/phase/6-enhancements`, while the checked-in README, CURRENT, and Phase 6B handoff still
+describe a pre-commit state. R0 must record, but must not infer, whether that commit was authorized.
+
 ## Phase 6C: Container Verifiers
 
 ### Objective and scope
@@ -141,7 +157,47 @@ checkpoint, cancellation, cleanup, and residual-effect reporting.
 - Network and redirect policy cannot be bypassed.
 - Residual containers, volumes, and effects are accurately disclosed.
 
-## Phase 6D: Observability
+## Phase 6D: Autonomous Delivery Closure
+
+### Objective and scope
+
+Close the product-level path from a confirmed Contract to an explicitly started durable Run and
+then through implementation, verifier/review loops, GitHub delivery, terminal report, and Human
+accept/reject/revise. Provide typed CLI and MCP/Plugin control surfaces for run, status, pause,
+resume, interrupt, and terminal decisions without bypassing HumanMessage, confirmation policy, or
+Runtime barriers.
+
+### Acceptance direction
+
+- A real Git fixture can traverse `ge start` discovery and confirmation through Run execution and a
+  terminal delivery bundle without direct Python composition by the user.
+- Confirmation and execution remain separate explicit actions; confirmation never silently starts
+  side effects.
+- Restart, pause, resume, interrupt, and revision preserve lineage and do not duplicate external
+  effects.
+- Verifier failure, infrastructure error, Review rejection, and delivery failure route distinctly.
+- Every terminal outcome produces a report and no path merges automatically.
+
+## Phase 6E: Integration Qualification
+
+### Objective and scope
+
+Qualify the implemented product boundaries in real, explicitly authorized environments. Cover
+Codex Plugin installation/load plus MCP routing, real Codex execution, a disposable GitHub
+repository with Checks and PR recovery, packaging/install/upgrade, and the declared Windows,
+Linux, and macOS support matrix. Fixtures remain useful but cannot substitute for real E2E evidence.
+
+### Acceptance direction
+
+- Each claimed supported platform has repeatable install, service/IPC, worktree, subprocess,
+  parallel-runtime, cancellation, and recovery evidence.
+- Real Plugin/MCP and GitHub evidence is clearly separated from deterministic fixtures.
+- Unsupported platforms and unavailable credentials are reported explicitly, not silently skipped
+  in release evidence.
+- Upgrade and migration tests cover existing Phase 0–6 data without rewriting historical records.
+- A release-readiness report maps every product claim to evidence or an explicit limitation.
+
+## Phase 6F: Observability
 
 ### Objective and scope
 
@@ -157,7 +213,7 @@ and redaction.
 - Secret values and unrestricted prompt/log bodies are never exported.
 - Read-only operations remain read-only when instrumented.
 
-## Phase 6E: Optional Project UI
+## Phase 6G: Optional Project UI
 
 ### Objective and scope
 
@@ -176,22 +232,36 @@ the existing Human Gateway and Runtime APIs.
 
 ## Sequencing and commit discipline
 
+Priority is intentionally asymmetric:
+
+1. **P0 correctness of process:** R0 is immediate and blocks every later feature.
+2. **P1 security and usable closure:** Phase 6C and 6D complete isolation and the main user path.
+3. **P2 release claims:** Phase 6E proves real integrations and the supported-platform matrix.
+4. **P3 enhancements:** Phase 6F and 6G add telemetry and presentation only after the product path
+   is evidence-backed.
+
+No UI or telemetry work may displace an unmet R0, isolation, autonomous-delivery, or qualification
+acceptance criterion.
+
 The default sequence on `phase/6-enhancements` is:
 
 ```text
 roadmap commit
   -> Phase 6A delivery commit
   -> Phase 6B delivery commit
+  -> Recovery Gate R0 reconciliation commit
   -> Phase 6C delivery commit
   -> Phase 6D delivery commit
   -> Phase 6E delivery commit
+  -> Phase 6F delivery commit
+  -> Phase 6G delivery commit
 ```
 
 Before each subphase:
 
 1. Verify the current branch, clean tracked worktree, current Phase 6 commit, and remote facts.
 2. Read this roadmap, `CURRENT.md`, the previous handoff, all accepted ADRs, and relevant code/tests.
-3. Create `docs/phases/phase-6<letter>.md` before implementation.
+3. Create the phase scope document before implementation.
 4. Implement only the active subphase.
 5. Run full required verification and create `phase-6<letter>-handoff.md`.
 6. Report uncommitted results and wait for Human Review.
@@ -215,4 +285,6 @@ Each subphase handoff must record:
 - Confirmation that later subphases and Claude Code were not started.
 - The exact next subphase and a ready-to-use startup prompt.
 
-The initial Phase 6A startup prompt is stored at `docs/prompts/phase-6a-start.md`.
+Startup prompts currently exist at `docs/prompts/phase-6a-start.md`,
+`docs/prompts/phase-6r-start.md`, and `docs/prompts/phase-6c-start.md`. Each later phase must create
+the next prompt only after its scope and predecessor evidence are stable.

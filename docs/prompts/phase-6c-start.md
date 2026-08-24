@@ -1,6 +1,8 @@
 # Phase 6C New-Conversation Startup Prompt
 
-Copy the text below only after Human Review approves Phase 6B and records its delivery commit.
+Copy the text below only after Human Review approves Recovery Gate R0 and its reconciliation
+delivery commit is the current local/remote Phase 6 HEAD. A Phase 6B commit subject alone is not
+authorization evidence.
 
 ```text
 工作区：
@@ -11,12 +13,13 @@ E:\project\graph_engineering
 
 必须继续使用 `phase/6-enhancements`，不得另建分支，也不得在 main 开发。开始前完整阅读并遵循
 AGENTS.md、DESIGN.md、README.md、docs/status/CURRENT.md、docs/phases/phase-6.md、
-docs/phases/phase-6b.md、docs/phases/phase-6b-handoff.md、全部 ADR、全部测试/Schema/fixtures，
+docs/phases/phase-6b.md、docs/phases/phase-6b-handoff.md、docs/phases/phase-6r.md、
+docs/phases/phase-6r-handoff.md、全部 ADR、全部测试/Schema/fixtures，
 以及 Runtime、Verifier、secret、subprocess、HTTP、checkpoint、barrier、budget、Artifact、report 和
 Phase 6B parallel 实现。
 
 先执行 `git fetch origin`，核实并报告当前分支、HEAD、origin/main、远端 Phase 6 分支、tracked/
-untracked/ignored、Phase 6B delivery SHA 与 handoff 是否一致、delivery 是否为当前 HEAD，以及
+untracked/ignored、R0 reconciliation SHA 与 handoff 是否一致、delivery 是否为当前 HEAD，以及
 Phase 0–6B 全量 baseline。若分支、HEAD、handoff、工作树或远端事实不一致，立即停止；不得
 reset、rebase、cherry-pick、另建分支或改写历史。
 

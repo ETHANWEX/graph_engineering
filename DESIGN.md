@@ -1323,18 +1323,21 @@ MVP 使用结构化 JSONL 事件，至少包含：
 - 默认不自动合并。
 - reject 会创建新 Contract 版本。
 
-### Phase 6：插件、Claude Code 与增强能力
+### Phase 6：产品闭环与增强能力
 
 范围：
 
 - Codex Plugin 作为 `ge` 的薄入口。
-- Claude Code Adapter。
 - 并行节点、子图和 join。
+- Recovery Gate R0：修复交付状态漂移、验证基线和旧 completion locks。
 - 容器化 Verifier。
+- 从 Contract 确认到 Run、Verifier/Review、PR/report 和 Human 决策的自治交付闭环。
+- 真实 Codex Plugin/MCP、GitHub、安装/升级和跨平台支持矩阵认证。
 - OpenTelemetry 和可选 UI。
 - 面向 Human Control Conversation 的项目页面、实时进度和结构化确认卡片。
 
-这些能力逐项实现，不要求在同一对话完成。
+权威顺序和验收门禁见 `docs/phases/phase-6.md`。Claude Code Adapter 暂未排期。这些能力逐项
+实现，不要求在同一对话完成，也不得跳过未满足的前置门禁。
 
 ## 21. 跨对话交接规范
 
@@ -1515,8 +1518,12 @@ Phase 0 启动基线：
 
 后续阶段仍需通过 ADR 或阶段 Review 明确：
 
-- [ ] Contract、Control Intent、Report 等 schema 的最终字段和版本迁移策略（Phase 0）。
-- [ ] Codex Session 终止能力和外部 Memory 的真实可靠性（Phase 2 原型验证）。
-- [ ] 动态 Verifier 的代码生成、权限和冻结细节（Phase 4）。
-- [ ] Windows、Linux 和 macOS 的首个正式发布支持矩阵。
-- [ ] 容器级隔离是否进入首个正式版本；当前不阻塞 MVP。
+- [x] Contract、Control Intent、Report 等 schema 使用显式协议版本、加法兼容和迁移；由 ADR-003
+  及 migration/schema drift 锁定。
+- [x] Codex Session 终止、外部 Memory 与恢复完成 Phase 2 原型和真实 Windows Codex 验证；无法
+  撤销的既发外部副作用仍按 residual effect 披露（ADR-007/008、Phase 2 handoff）。
+- [x] 动态 Verifier 的注册、结果协议、代码生成边界、权限和冻结生命周期由 ADR-019–023 与
+  Phase 4 验收冻结。
+- [ ] Windows、Linux 和 macOS 的首个正式发布支持矩阵；归入 Phase 6E Integration
+  Qualification，不以 Windows fixture 冒充跨平台证据。
+- [x] 容器级隔离明确进入首个正式版本，实现在 Phase 6C 跟踪；未满足 6C 验收前不得宣称完成。

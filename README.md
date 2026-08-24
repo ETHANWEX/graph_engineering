@@ -2,20 +2,20 @@
 
 Graph Engineering 是一个面向自治软件开发的图工程控制层。Human 通过自然语言定义需求和授权边界、随时查询或中断开发，并最终验收成果；Graph Runtime 在冻结的 Contract 内组织 Coding Agent、确定性工具、Verifier、反馈循环和外部系统，持续完成实现、验证、修复、审查与证据交付。
 
-> 当前状态：Phase 0–5 已进入远端 `main`，Phase 6A 已形成经 Human Review 批准的本地
-> delivery commit `55750075c7af208ebc508299752566a3f67eaeb5`。Phase 6B：Parallel Graphs
-> 已在长期分支 `phase/6-enhancements` 完成未提交实现并等待 Human Review；尚未授权 delivery commit、推送、
-> 创建 PR、修改/合并 main 或安装 Plugin。
+> 当前状态：Phase 0–5 已进入远端 `main`；Phase 6A 与 6B 代码位于长期分支
+> `phase/6-enhancements`，当前本地/远端 HEAD 均为 Phase 6B commit `f9ee0b3`。Human 已于
+> 2026-08-24 明确批准该提交为 Phase 6B delivery，并已 Review/批准 Recovery Gate R0 的单一本地
+> delivery commit。R0 修复了状态漂移和可复现基线；push 和 Phase 6C 启动仍需单独授权。
 
 ## 已实现能力
 
 Phase 0–6B 当前工作树提供：
 
-- Python 3.12+、Pydantic v2 和 Typer 的可安装 `src` layout 包。
+- Python 3.12–3.13、Pydantic v2 和 Typer 的可安装 `src` layout 包。
 - 版本化 Task Contract、Execution Graph、Result、Control、Run 关系和 Report 协议。
 - 36 个工作树公共 JSON Schema，以及稳定性测试。
 - JSON/YAML Execution Graph 静态校验；错误包含字段路径并返回非零退出码。
-- 合法/非法 fixtures、36 个单元测试、mypy 严格类型检查和 Ruff 检查。
+- 合法/非法 fixtures、全量回归测试、mypy 严格类型检查和 Ruff 检查。
 - SQLite State Store（含迁移、事务状态机、checkpoint 和事件 outbox）。
 - 追加式 JSONL Event Store 与内容寻址 Artifact Store。
 - 单机、单任务、串行 Graph Runtime：受限条件边、修复循环、重试上限、Run/Node
@@ -85,7 +85,7 @@ Phase 0–6B 当前工作树提供：
   `error > blocked > failed > cancelled > succeeded` fail closed。
 - SQLite migration 8 保持 migration 1–7 和 Phase 6A service compatibility 可读；串行 Graph
   canonical SHA、Runtime Service、IPC、MCP 和 Plugin 行为保持兼容。
-- 187 个 pytest 测试（183 passed / 4 个真实 Codex 测试默认跳过）；mypy strict、Ruff、
+- 190 个 pytest collected 实例（186 passed / 4 个真实 Codex 实例默认跳过）；mypy strict、Ruff、
   36-schema drift、Graph CLI 和 migration 1–8 repeatability 全部通过。
 
 开发安装：
@@ -273,7 +273,7 @@ Final Report 计划包含：需求与 Contract 版本、代码变更、测试和
 | Phase 3 | 持续自然语言控制对话、Discovery、Contract 冻结与修订 |
 | Phase 4 | 动态 Verifier、HTTP Pipeline、secret 和外部副作用控制 |
 | Phase 5 | 多维 Review、GitHub PR、证据矩阵和所有终态 Final Report |
-| Phase 6 | Runtime/MCP/Codex Plugin、并行图、容器、遥测和可选 UI；Claude Code 暂未排期 |
+| Phase 6 | Runtime/MCP/Plugin、并行图、R0 状态恢复、容器、自治交付闭环、真实集成认证、遥测和可选 UI；Claude Code 暂未排期 |
 
 Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足验收条件前，不进入下一阶段。
 
@@ -281,11 +281,15 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 
 - 已合并阶段：Phase 0–5；Phase 5 通过 PR #6 进入 `origin/main`，实现/交接提交为
   `db7dd54` / `4ebeb2d`。
-- 当前分支：`phase/6-enhancements`，基线为
-  `55750075c7af208ebc508299752566a3f67eaeb5`；Phase 6B 已完成未提交实现并等待 Human Review，
-  Phase 6A delivery commit 尚未推送。
-- Phase 6 使用单一长期分支，6A–6N 以独立阶段提交迭代；Claude Code 暂未排期。
-- 当前未授权：Phase 6 功能提交/推送、Graph Engineering PR、main 修改、merge 或 auto-merge。
+- 当前分支：`phase/6-enhancements`；本地和远端 HEAD 均为 Phase 6B commit
+  `f9ee0b330a5a22a99d48cb787356445d044fb2ae`。Human 已于 2026-08-24 明确批准该提交为
+  Phase 6B delivery；R0 将该决定固化为版本化交接证据。
+- 当前活动门禁：Recovery Gate R0 已通过 Human Review，并获授权创建单一本地 delivery commit。
+  其结果包括交付事实、Python 3.12–3.13、默认 pytest/Ruff 路径和旧 completion locks；push
+  仍需单独授权，之后才按 6C 容器、6D 自治交付闭环、6E 真实集成认证、6F 遥测、6G 可选 UI
+  的顺序推进。
+- 当前未授权：新的 delivery commit/push、Graph Engineering PR、main 修改、merge/auto-merge、
+  Plugin 安装/发布、真实 GitHub 写入或 Phase 6C 实现。
 - GitHub CLI 2.97.0 已安装，`pr`、`run`、`api` 命令入口可用；当前未登录任何 GitHub host，
   因此私有仓库读取和真实 GitHub E2E 仍保持未验证。隔离 provider fixture 不冒充真实 E2E。
 - 当前设计：[DESIGN.md](DESIGN.md)
@@ -307,6 +311,9 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 - Phase 6A 启动 Prompt：[docs/prompts/phase-6a-start.md](docs/prompts/phase-6a-start.md)
 - Phase 6B 范围：[docs/phases/phase-6b.md](docs/phases/phase-6b.md)
 - Phase 6B 交接：[docs/phases/phase-6b-handoff.md](docs/phases/phase-6b-handoff.md)
+- Recovery Gate R0：[docs/phases/phase-6r.md](docs/phases/phase-6r.md)
+- Recovery Gate R0 交接：[docs/phases/phase-6r-handoff.md](docs/phases/phase-6r-handoff.md)
+- Recovery Gate R0 启动 Prompt：[docs/prompts/phase-6r-start.md](docs/prompts/phase-6r-start.md)
 - Phase 6C 启动 Prompt：[docs/prompts/phase-6c-start.md](docs/prompts/phase-6c-start.md)
 - 协作约定：[AGENTS.md](AGENTS.md)
 
