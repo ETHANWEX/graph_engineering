@@ -9,6 +9,11 @@ from pathlib import Path
 from typing import Any
 
 from graph_engineering.models.common import ArtifactKind
+from graph_engineering.observability import (
+    NoOpTelemetryProvider,
+    TelemetryIdentity,
+    TelemetryProvider,
+)
 from graph_engineering.runtime import ArtifactStore, StateStore
 from graph_engineering.runtime.store import timestamp
 from graph_engineering.verifier.policy import SecretRedactor
@@ -37,14 +42,26 @@ class DeliveryReportCompiler:
         output_root: Path,
         *,
         secret_values: dict[str, str] | None = None,
+        telemetry: TelemetryProvider | None = None,
     ) -> None:
         self.state = state
         state.migrate()
         self.artifacts = artifacts
         self.output_root = output_root
         self.redactor = SecretRedactor(secret_values or {})
+        self.telemetry = telemetry or NoOpTelemetryProvider()
 
     def compile(self, run_id: str) -> DeliveryBundle:
+        with self.telemetry.span(
+            "ge.report.generate",
+            TelemetryIdentity(run_id=run_id),
+            {"ge.component": "report", "ge.operation": "generate"},
+        ) as span:
+            result = self._compile(run_id)
+            span.set_result("succeeded")
+            return result
+
+    def _compile(self, run_id: str) -> DeliveryBundle:
         facts = self._facts(run_id)
         with self.state.transaction() as connection:
             latest = connection.execute(

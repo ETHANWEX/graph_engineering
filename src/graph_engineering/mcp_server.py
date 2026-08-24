@@ -7,6 +7,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from graph_engineering.observability import (
+    NoOpTelemetryProvider,
+    TelemetryIdentity,
+    TelemetryProvider,
+)
 from graph_engineering.service import MCP_TOOLS_VERSION, ServiceClient, ServiceError
 
 MIN_CODEX_VERSION = "0.147.0"
@@ -114,8 +119,9 @@ for _name in ("run", "pause", "resume", "interrupt", "cancel", "accept", "reject
 
 
 class MCPServer:
-    def __init__(self, project_root: Path) -> None:
+    def __init__(self, project_root: Path, *, telemetry: TelemetryProvider | None = None) -> None:
         self.client = ServiceClient(project_root)
+        self.telemetry = telemetry or NoOpTelemetryProvider()
 
     def serve(self) -> None:
         for line in sys.stdin.buffer:
@@ -134,6 +140,30 @@ class MCPServer:
                 sys.stdout.flush()
 
     def handle(self, request: object) -> dict[str, Any] | None:
+        method = request.get("method") if isinstance(request, dict) else None
+        request_id = request.get("id") if isinstance(request, dict) else None
+        operation = {
+            "initialize": "initialize",
+            "ping": "ping",
+            "tools/list": "tools_list",
+            "tools/call": "tools_call",
+        }.get(str(method), "invalid" if method is None else "unknown")
+        with self.telemetry.span(
+            "ge.mcp.request",
+            TelemetryIdentity(request_id=str(request_id) if request_id is not None else None),
+            {
+                "ge.component": "mcp",
+                "ge.operation": operation,
+                "ge.protocol.version": "1.0",
+            },
+        ) as span:
+            result = self._handle(request)
+            span.set_result(
+                "error" if isinstance(result, dict) and "error" in result else "succeeded"
+            )
+            return result
+
+    def _handle(self, request: object) -> dict[str, Any] | None:
         if not isinstance(request, dict):
             return self._error(None, -32600, "invalid JSON-RPC request")
         request_id = request.get("id")

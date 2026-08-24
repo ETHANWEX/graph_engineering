@@ -11,16 +11,22 @@ from graph_engineering.contracts import ContractDelta, ContractRepository, RunPl
 from graph_engineering.conversation import ConversationRepository, IntentCompiler
 from graph_engineering.models import HumanMessage
 from graph_engineering.models.control import StateChangeAction, StateChangeControlIntent
+from graph_engineering.observability import (
+    NoOpTelemetryProvider,
+    TelemetryIdentity,
+    TelemetryProvider,
+)
 from graph_engineering.runtime.store import StateStore, timestamp
 
 from .models import HumanAcceptanceRecord
 
 
 class HumanDecisionService:
-    def __init__(self, state: StateStore) -> None:
+    def __init__(self, state: StateStore, *, telemetry: TelemetryProvider | None = None) -> None:
         self.state = state
         state.migrate()
         self.conversations = ConversationRepository(state)
+        self.telemetry = telemetry or NoOpTelemetryProvider()
 
     def accept(self, message: HumanMessage, *, report_revision: int) -> HumanAcceptanceRecord:
         return self._apply(
@@ -52,6 +58,29 @@ class HumanDecisionService:
         )
 
     def _apply(
+        self,
+        message: HumanMessage,
+        action: StateChangeAction,
+        *,
+        reason: str | None,
+        report_revision: int,
+    ) -> HumanAcceptanceRecord:
+        with self.telemetry.span(
+            "ge.human.decision",
+            TelemetryIdentity(run_id=message.run_id, request_id=message.message_id),
+            {
+                "ge.component": "human",
+                "ge.operation": "decision",
+                "ge.action": action.value,
+            },
+        ) as span:
+            record = self._apply_uninstrumented(
+                message, action, reason=reason, report_revision=report_revision
+            )
+            span.set_result("succeeded")
+            return record
+
+    def _apply_uninstrumented(
         self,
         message: HumanMessage,
         action: StateChangeAction,

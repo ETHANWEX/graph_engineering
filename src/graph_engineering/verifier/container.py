@@ -22,6 +22,11 @@ from typing import BinaryIO, Literal, Protocol, cast
 from graph_engineering.models import Artifact, Error, VerifierResult
 from graph_engineering.models.common import ArtifactKind, ErrorKind
 from graph_engineering.models.results import VerifierStatus
+from graph_engineering.observability import (
+    NoOpTelemetryProvider,
+    TelemetryIdentity,
+    TelemetryProvider,
+)
 from graph_engineering.runtime.artifacts import ArtifactStore
 from graph_engineering.runtime.store import StateStore, timestamp
 
@@ -405,6 +410,7 @@ class ContainerVerifier:
         authorized_roots: tuple[Path, ...],
         secrets: Mapping[str, str] | None = None,
         can_start: Callable[[], bool] | None = None,
+        telemetry: TelemetryProvider | None = None,
     ) -> None:
         if manifest.verifier_type != "project/container" or manifest.container is None:
             raise ValueError("ContainerVerifier requires a project/container Manifest")
@@ -419,6 +425,7 @@ class ContainerVerifier:
         self._secrets = SecretResolver(secrets or {}).resolve(manifest)
         self._redactor = SecretRedactor(self._secrets)
         self._can_start = can_start or (lambda: True)
+        self.telemetry = telemetry or NoOpTelemetryProvider()
         self._frozen_fingerprint = self.spec.fingerprint()
         self._slots = threading.BoundedSemaphore(self.spec.resources.max_concurrency)
         self._active_handles: set[str] = set()
@@ -824,6 +831,28 @@ class ContainerVerifier:
         return tuple(artifacts)
 
     def _finish(
+        self,
+        row: sqlite3.Row,
+        result: VerifierResult,
+        *,
+        cleanup: ContainerCleanupResult | None = None,
+    ) -> VerifierOutcome:
+        with self.telemetry.span(
+            "ge.runtime.cleanup",
+            TelemetryIdentity(
+                run_id=str(row["run_id"]),
+                node_id=str(row["node_id"]),
+                attempt_id=str(row["attempt_id"]),
+                external_effect_id=str(row["idempotency_key"]),
+                provider_handle=str(row["handle"]) if row["handle"] else None,
+            ),
+            {"ge.component": "verifier", "ge.operation": "cleanup"},
+        ) as span:
+            outcome = self._finish_uninstrumented(row, result, cleanup=cleanup)
+            span.set_result(outcome.result.status.value)
+            return outcome
+
+    def _finish_uninstrumented(
         self,
         row: sqlite3.Row,
         result: VerifierResult,

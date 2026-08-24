@@ -3,6 +3,11 @@
 from __future__ import annotations
 
 from graph_engineering.models.results import ExecutorStatus
+from graph_engineering.observability import (
+    NoOpTelemetryProvider,
+    TelemetryIdentity,
+    TelemetryProvider,
+)
 
 from .types import (
     ExecutorOutcome,
@@ -24,12 +29,37 @@ class DurableExecutorRuntime:
         executor: ExecutorProtocol,
         sessions: object,
         policy: SessionPolicy | None = None,
+        telemetry: TelemetryProvider | None = None,
     ) -> None:
         self.executor = executor
         self.sessions = sessions
         self.policy = policy or SessionPolicy()
+        self.telemetry = telemetry or NoOpTelemetryProvider()
 
     def execute(self, request: ExecutorRequest) -> ExecutorOutcome:
+        with self.telemetry.span(
+            "ge.executor.invocation",
+            TelemetryIdentity(
+                run_id=request.run_id,
+                node_id=request.node_id,
+                attempt_id=request.attempt_id,
+            ),
+            {
+                "ge.component": "executor",
+                "ge.operation": "invoke",
+            },
+        ) as span:
+            outcome = self._execute(request)
+            span.add_identity(
+                TelemetryIdentity(
+                    session_id=outcome.session.provider_session_id,
+                    provider_handle=outcome.session.provider_session_id,
+                )
+            )
+            span.set_result(outcome.result.status.value)
+            return outcome
+
+    def _execute(self, request: ExecutorRequest) -> ExecutorOutcome:
         from graph_engineering.runtime.sessions import SessionRepository
 
         if not isinstance(self.sessions, SessionRepository):

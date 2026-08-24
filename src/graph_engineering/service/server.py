@@ -12,6 +12,11 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from graph_engineering.observability import (
+    NoOpTelemetryProvider,
+    TelemetryIdentity,
+    TelemetryProvider,
+)
 from graph_engineering.runtime.store import timestamp
 
 from .gateway import HumanGateway, gateway_versions, workspace_identity
@@ -39,11 +44,18 @@ _MUTATIONS = {
 
 
 class RuntimeService:
-    def __init__(self, project_root: Path, project_id: str) -> None:
+    def __init__(
+        self,
+        project_root: Path,
+        project_id: str,
+        *,
+        telemetry: TelemetryProvider | None = None,
+    ) -> None:
         self.project_root = project_root.resolve()
         self.project_id = project_id
         self.workspace_id = workspace_identity(self.project_root)
-        self.gateway = HumanGateway(self.project_root, project_id)
+        self.telemetry = telemetry or NoOpTelemetryProvider()
+        self.gateway = HumanGateway(self.project_root, project_id, telemetry=self.telemetry)
         self.service_root = self.project_root / ".ge" / "service"
         self.endpoint_path = self.service_root / "endpoint.json"
         self.token = secrets.token_urlsafe(48)
@@ -93,6 +105,19 @@ class RuntimeService:
             self._remove_owned_descriptor()
 
     def _serve_connection(self, connection: socket.socket) -> None:
+        with self.telemetry.span(
+            "ge.ipc.request",
+            TelemetryIdentity(project_id=self.project_id, repository_id=self.workspace_id),
+            {
+                "ge.component": "ipc",
+                "ge.operation": "request",
+                "ge.protocol.version": "1.0",
+            },
+        ) as span:
+            self._serve_connection_uninstrumented(connection)
+            span.set_result("completed")
+
+    def _serve_connection_uninstrumented(self, connection: socket.socket) -> None:
         request_id = "unknown"
         try:
             raw = self._read_frame(connection)

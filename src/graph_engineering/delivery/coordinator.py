@@ -11,6 +11,11 @@ from typing import Any, cast
 from graph_engineering.models import Error, ExecutionGraph, TaskContract
 from graph_engineering.models.common import ErrorKind
 from graph_engineering.models.results import ExecutorResult, ExecutorStatus
+from graph_engineering.observability import (
+    NoOpTelemetryProvider,
+    TelemetryIdentity,
+    TelemetryProvider,
+)
 from graph_engineering.runtime import ArtifactStore, GraphRuntime, StateStore
 from graph_engineering.runtime.store import timestamp
 
@@ -55,6 +60,7 @@ class AutonomousDeliveryCoordinator:
         verifier: Any,
         reviewer: Any | None = None,
         delivery_provider: Any | None = None,
+        telemetry: TelemetryProvider | None = None,
     ) -> None:
         self.project_root = project_root.resolve()
         self.control = StateStore(self.project_root / ".ge" / "control" / "phase3.db")
@@ -63,6 +69,7 @@ class AutonomousDeliveryCoordinator:
         self.verifier = verifier
         self.reviewer = reviewer
         self.delivery_provider = delivery_provider
+        self.telemetry = telemetry or NoOpTelemetryProvider()
 
     def run(self, run_id: str, *, request_id: str, idempotency_key: str) -> AutonomousRunResult:
         if not request_id or not idempotency_key:
@@ -81,8 +88,14 @@ class AutonomousDeliveryCoordinator:
             self.executor,
             reviewer=self.reviewer,
             delivery_provider=self.delivery_provider,
+            telemetry=self.telemetry,
         )
-        runtime = GraphRuntime(run_root, executor=runtime_executor, verifier=self.verifier)
+        runtime = GraphRuntime(
+            run_root,
+            executor=runtime_executor,
+            verifier=self.verifier,
+            telemetry=self.telemetry,
+        )
         try:
             self._copy_frozen_inputs(runtime.state, run_id)
             with runtime.state.read_connection() as connection:
@@ -110,7 +123,10 @@ class AutonomousDeliveryCoordinator:
             }:
                 raise RunStartError(f"Run stopped in nonterminal state: {status.value}")
             compiler = DeliveryReportCompiler(
-                runtime.state, runtime.artifacts, run_root / "reports"
+                runtime.state,
+                runtime.artifacts,
+                run_root / "reports",
+                telemetry=self.telemetry,
             )
             try:
                 bundle = compiler.latest(run_id)
@@ -139,11 +155,33 @@ class AutonomousDeliveryCoordinator:
     ) -> HumanAcceptanceRecord:
         """Persist a terminal Human decision and synchronize immutable revision lineage."""
 
+        with self.telemetry.span(
+            "ge.human.decision",
+            TelemetryIdentity(run_id=str(message.run_id) if message.run_id is not None else None),
+            {
+                "ge.component": "human",
+                "ge.operation": "decision",
+                "ge.action": action,
+            },
+        ) as span:
+            record = self._decide(action, message, reason=reason, report_revision=report_revision)
+            span.set_result("succeeded")
+            return record
+
+    def _decide(
+        self,
+        action: str,
+        message: Any,
+        *,
+        reason: str = "",
+        report_revision: int,
+    ) -> HumanAcceptanceRecord:
+
         if message.run_id is None:
             raise RunStartError("Human decision requires a Run target")
         run_root = self._run_root(str(message.run_id))
         state = StateStore(run_root / "state.db")
-        service = HumanDecisionService(state)
+        service = HumanDecisionService(state, telemetry=self.telemetry)
         if action == "accept":
             record = service.accept(message, report_revision=report_revision)
         elif action == "reject":
@@ -157,14 +195,20 @@ class AutonomousDeliveryCoordinator:
                 state, record.run_id, record.new_contract_revision, record.new_run_id
             )
         DeliveryReportCompiler(
-            state, ArtifactStore(run_root / "artifacts"), run_root / "reports"
+            state,
+            ArtifactStore(run_root / "artifacts"),
+            run_root / "reports",
+            telemetry=self.telemetry,
         ).compile(record.run_id)
         return record
 
     def report(self, run_id: str) -> DeliveryBundle:
         root = self._run_root(run_id)
         return DeliveryReportCompiler(
-            StateStore(root / "state.db"), ArtifactStore(root / "artifacts"), root / "reports"
+            StateStore(root / "state.db"),
+            ArtifactStore(root / "artifacts"),
+            root / "reports",
+            telemetry=self.telemetry,
         ).latest(run_id)
 
     def claim_start_for_test(self, run_id: str, idempotency_key: str) -> None:
@@ -369,15 +413,23 @@ class _CoordinatorExecutor:
         *,
         reviewer: Any | None,
         delivery_provider: Any | None,
+        telemetry: TelemetryProvider,
     ) -> None:
         self.state = state
         self.delegate = delegate
         self.reviewer = reviewer
         self.delivery_provider = delivery_provider
+        self.telemetry = telemetry
 
     def execute(self, run_id: str, node: Any, attempt_id: str) -> ExecutorResult:
         if node.node_id == "review" and self.reviewer is not None:
-            aggregate: ReviewAggregate = self.reviewer(run_id, attempt_id)
+            with self.telemetry.span(
+                "ge.review.attempt",
+                TelemetryIdentity(run_id=run_id, attempt_id=attempt_id, review_id=attempt_id),
+                {"ge.component": "review", "ge.operation": "review"},
+            ) as review_span:
+                aggregate: ReviewAggregate = self.reviewer(run_id, attempt_id)
+                review_span.set_result(aggregate.verdict.value)
             if aggregate.review_errors:
                 result = self._error("review.infrastructure_error", "Reviewer infrastructure error")
                 classification = "review_infrastructure_error"

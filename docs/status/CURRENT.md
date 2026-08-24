@@ -2,14 +2,27 @@
 
 ## 当前阶段
 
-Phase 6E Integration Qualification 正在实现并执行已授权的本地资格测试。长期分支为
-`phase/6-enhancements`；baseline、本地 HEAD 与远端 Phase 6 HEAD 均为 Phase 6D delivery
-`651352c056c5402c6a4a4057946822948a23ea66`，其唯一 parent 是 Phase 6C delivery
-`50f1d0a47d6c210c407af79b5c00e73b43ea984e`；`origin/main` 保持
-`eedc46d1a607c6169cb43eca79ef56bdd137efac`。Phase 6D handoff/README 的 pre-delivery 措辞是
-冻结历史快照；Phase 6E 不重写它们。
+Phase 6F Observability 已完成已授权的本地实现与无外部副作用验证，全部结果保持未提交并等待
+Human Review。长期分支为
+`phase/6-enhancements`；baseline、本地 HEAD 与远端 Phase 6 HEAD 均为 Human 已接受并推送的
+Phase 6E delivery `e1aa9c61f568b7dda6c77248bc87a000f539a0ca`，其 parent 是 Phase 6D
+delivery `651352c056c5402c6a4a4057946822948a23ea66`；`origin/main` 保持
+`eedc46d1a607c6169cb43eca79ef56bdd137efac`。Phase 6E handoff 的 delivery 前措辞是冻结历史
+快照，不予重写。
 
-## Phase 6E 已实现
+## Phase 6F 当前范围
+
+- ADR-042 与 observability contract 1.0 定义非权威、secret-safe、bounded provider boundary。
+- 默认 disabled/no-op；deterministic in-memory exporter 用于本地测试，不依赖真实 collector。
+- Runtime/IPC/MCP/Agent/Verifier/Review/GitHub/Report/Human/recovery/cleanup 关联既有持久身份。
+- 不新增第三方依赖、SQLite migration 或公共 Schema；真实 OTLP/collector 保持 blocked。
+- 代码入口为 `graph_engineering.observability`；deterministic in-memory exporter 覆盖 sampling、
+  parent/link、restart/thread/async correlation、overflow/timeout/partial/exception、late telemetry、
+  bounded metric labels 与 raw/URL/base64 secret 拒绝。
+- Runtime/parallel、Executor Session、Verifier/container cleanup、Service/IPC/MCP、Review、GitHub、
+  Report 和 Human decision 使用可选 provider；默认构造行为保持 no-op。
+
+## Phase 6E 已交付基线
 
 - qualification evidence/claim matrix 1.0 独立于 Runtime SQLite，记录 product/protocol/Git/
   host/tool/auth 状态、typed operation、时间/退出码/count、Artifact、cleanup、residual、限制与
@@ -37,6 +50,19 @@ Phase 6E Integration Qualification 正在实现并执行已授权的本地资格
 - Runtime SQLite 仍是唯一 Run 权威；qualification 文件从不成为 routing/recovery 状态源。
 
 ## 当前证据
+
+- Phase 6F focused：13 passed；受影响 Phase 2/5/6A–6D regression：93 passed；Phase 6D
+  autonomous delivery + Phase 6E qualification 宿主短路径回归：20 passed。
+- Phase 6F 最终全量 248 collected：Python 3.13.14 `244 passed / 4 skipped` in 50.38s；
+  Python 3.12.10 `244 passed / 4 skipped` in 50.78s，均 exit 0。
+- Phase 6F 最终 mypy 136 source files clean；Ruff lint passed、136 files format clean；36 Schema
+  zero drift；serial/parallel Graph 与 Verifier list/validate passed。
+- 无依赖、package version、SQLite migration 或公共 Schema 变化。单独获批后，Phase 6E 固定
+  build toolchain 从 pip cache 安装到一次性 venv；当前快照 wheel/sdist 构建成功，wheel 在全新
+  Python 3.12/3.13 venv 离线安装并通过 metadata/observability import smoke。artifact hash 与
+  cleanup 见 `docs/phases/phase-6f-handoff.md`；未改写 Phase 6E 冻结 evidence。
+- 真实 OTLP/collector/SaaS E2E 未获精确 endpoint/字段/认证/保留/cleanup 授权，**blocked**；没有
+  telemetry 离开本地进程。详见 `docs/phases/phase-6f-handoff.md`。
 
 - 修改前受管 sandbox：225 collected，`70 passed / 3 skipped / 152 tmp_path ACL errors`，exit 1；
   仅为 pytest 临时根 ACL，未记为通过。宿主 Python 3.13.14 与 3.12.10 均为
@@ -73,8 +99,6 @@ qualification 编排失败均保留在 release-readiness report，不以重跑�
 
 ## 工作区与下一门禁
 
-全部 Phase 6E 结果保持未提交。完成最终双 Python/full/focused/static/Schema/CLI 验证并创建
-`docs/phases/phase-6e-handoff.md` 后等待 Human Review。13 个本次 system-temp qualification 根已
-清理且残留为零；pip shared cache 未删除。未经再次明确授权，不得 commit、push、
-PR、修改/合并 main、发布 package/Plugin、修改 marketplace、执行真实 Codex/GitHub/container、
-创建 runner/VM、auto-merge 或开始 Phase 6F。
+Phase 6F 结果必须保持未提交并等待 Human Review。未经再次明确授权，不得 commit、push、PR、
+修改/合并 main、发布 package/Plugin、向真实 collector/backend 写 telemetry、执行真实
+Codex/GitHub/container、创建 runner/VM、auto-merge 或开始 Phase 6G。

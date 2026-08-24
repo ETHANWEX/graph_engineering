@@ -20,20 +20,43 @@ from graph_engineering.models import (
     StateChangeControlIntent,
 )
 from graph_engineering.models.control import ControlReasonCode, StateChangeAction, Urgency
+from graph_engineering.observability import (
+    NoOpTelemetryProvider,
+    TelemetryIdentity,
+    TelemetryProvider,
+)
 from graph_engineering.runtime import FakeExecutor, FakeVerifier, GraphRuntime, StateStore
 
 from .protocol import IPC_VERSION, RUNTIME_API_VERSION, ServiceError, ServiceErrorCode
 
 
 class HumanGateway:
-    def __init__(self, project_root: Path, project_id: str) -> None:
+    def __init__(
+        self,
+        project_root: Path,
+        project_id: str,
+        *,
+        telemetry: TelemetryProvider | None = None,
+    ) -> None:
         self.project_root = project_root.resolve()
         self.project_id = project_id
+        self.telemetry = telemetry or NoOpTelemetryProvider()
         self.control_root = self.project_root / ".ge" / "control"
         self.state = StateStore(self.control_root / "phase3.db")
         self.conversations = ConversationRepository(self.state)
 
     def dispatch(self, operation: str, payload: dict[str, Any]) -> dict[str, Any]:
+        run_id = str(payload.get("run_id")) if payload.get("run_id") else None
+        with self.telemetry.span(
+            "ge.service.operation",
+            TelemetryIdentity(project_id=self.project_id, run_id=run_id),
+            {"ge.component": "service", "ge.operation": operation},
+        ) as span:
+            result = self._dispatch(operation, payload)
+            span.set_result("succeeded")
+            return result
+
+    def _dispatch(self, operation: str, payload: dict[str, Any]) -> dict[str, Any]:
         if operation == "start":
             return self.start(payload)
         if operation == "message":

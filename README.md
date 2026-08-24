@@ -2,15 +2,15 @@
 
 Graph Engineering 是一个面向自治软件开发的图工程控制层。Human 通过自然语言定义需求和授权边界、随时查询或中断开发，并最终验收成果；Graph Runtime 在冻结的 Contract 内组织 Coding Agent、确定性工具、Verifier、反馈循环和外部系统，持续完成实现、验证、修复、审查与证据交付。
 
-> 当前状态：Phase 6E Integration Qualification 已在 `phase/6-enhancements` 上完成实现与
-> 已授权本地资格测试，精确
-> baseline 为 Phase 6D delivery `651352c056c5402c6a4a4057946822948a23ea66`。本阶段实现与
-> 无未授权外部副作用的本地 qualification 已获授权；delivery commit、push、PR、main
-> 修改/merge、发布、真实 Plugin-load/Codex、GitHub、container 和跨平台执行均未授权。
+> 当前状态：Phase 6F Observability 已在 `phase/6-enhancements` 上完成已授权的本地实现与验证，
+> 全部结果保持未提交并等待 Human Review。精确 baseline
+> 为 Phase 6E delivery `e1aa9c61f568b7dda6c77248bc87a000f539a0ca`，且已推送到同名远端。
+> Phase 6E 的真实 Plugin、GitHub、container、Linux/macOS 限制保持原样。Phase 6F delivery
+> commit/push/PR、main 修改/merge、发布和任何真实外部 telemetry 写入均未授权。
 
 ## 已实现能力
 
-Phase 0–6E 当前工作树提供：
+Phase 0–6F 当前工作树提供：
 
 - Python 3.12–3.13、Pydantic v2 和 Typer 的可安装 `src` layout 包。
 - 版本化 Task Contract、Execution Graph、Result、Control、Run 关系和 Report 协议。
@@ -109,6 +109,12 @@ Phase 0–6E 当前工作树提供：
   evidence 文件和只读 `ge qualification report`；blocked/unverified 永不映射为 passed。
 - 固定 `SOURCE_DATE_EPOCH` 的可重复 wheel/sdist、本地 Python 3.12/3.13 clean install、
   Service/IPC/MCP smoke，以及 Phase 6D wheel 到当前 build 的数据保留升级资格证据。
+- observability contract 1.0 与 dependency-free OpenTelemetry provider boundary；默认 disabled/
+  no-op，支持 deterministic sampling、parent/link、持久 identity correlation、bounded attribute/
+  metric labels、buffer/batch/flush/shutdown 和 exporter failure isolation。
+- Runtime/parallel/recovery、Service/IPC/MCP、Agent Session、Verifier/container cleanup、Review/
+  review-fix、GitHub、Final Report 和 Human decision instrumentation；telemetry 不进入 SQLite、
+  route、budget、barrier、terminal 或 external-effect authority。
 
 开发安装：
 
@@ -308,11 +314,10 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 - 当前分支：`phase/6-enhancements`；本地与远端 Phase 6 HEAD 均为 Phase 6D delivery
   `651352c056c5402c6a4a4057946822948a23ea66`，其唯一 parent 是 Phase 6C delivery
   `50f1d0a47d6c210c407af79b5c00e73b43ea984e`。
-- 当前活动门禁：Phase 6E Human Review。授权的 Windows 本地 package、双 Python、
-  Service/IPC/MCP 与 fixture 回归证据已生成；全部结果未提交，真实 provider 与 Linux/macOS
-  不以 fixture 冒充。
+- 当前活动门禁：Phase 6F Observability 本地实现与无外部副作用验证。Phase 6E delivery
+  `e1aa9c61f568b7dda6c77248bc87a000f539a0ca` 已由 Human 接受并推送；其冻结 handoff 不重写。
 - 当前未授权：Graph Engineering PR、main 修改、merge/auto-merge、Plugin 安装/发布、
-  真实外部写入、Phase 6E delivery commit/push、真实 Codex/GitHub/container 或 Phase 6F。
+  真实外部写入、Phase 6F delivery commit/push、真实 telemetry backend 或 Phase 6G。
 - GitHub CLI 2.97.0 已安装，`pr`、`run`、`api` 命令入口可用；当前未登录任何 GitHub host，
   因此私有仓库读取和真实 GitHub E2E 仍保持未验证。隔离 provider fixture 不冒充真实 E2E。
 - 当前设计：[DESIGN.md](DESIGN.md)

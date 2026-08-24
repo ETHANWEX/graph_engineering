@@ -21,6 +21,7 @@ from graph_engineering.models.results import (
     ExecutorStatus,
     VerifierStatus,
 )
+from graph_engineering.observability import TelemetryIdentity
 
 from .errors import RuntimeInvariantError
 from .store import timestamp
@@ -286,6 +287,22 @@ class ParallelCoordinator:
                 self.runtime._checkpoint(connection, run_id, f"parallel_{reason}_barrier")
 
     def _branch_step(self, run_id: str, container: Node, branch_id: str) -> None:
+        identity = TelemetryIdentity(
+            run_id=run_id,
+            node_id=container.node_id,
+            branch_id=branch_id,
+        )
+        with self.runtime.telemetry.span(
+            "ge.runtime.parallel_branch",
+            identity,
+            {"ge.component": "runtime", "ge.operation": "parallel_branch"},
+            links=(self.runtime.telemetry.link(identity),),
+        ) as span:
+            self._branch_step_uninstrumented(run_id, container, branch_id)
+            aggregate = self.aggregate(run_id, container.node_id)
+            span.set_result(aggregate.status.value if aggregate is not None else "pending")
+
+    def _branch_step_uninstrumented(self, run_id: str, container: Node, branch_id: str) -> None:
         if self.runtime._barrier(run_id) is not None:
             return
         subgraph = self._subgraph(container, branch_id)

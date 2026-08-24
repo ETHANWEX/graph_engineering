@@ -53,6 +53,11 @@ from graph_engineering.models.results import (
     VerifierResult,
     VerifierStatus,
 )
+from graph_engineering.observability import (
+    NoOpTelemetryProvider,
+    TelemetryIdentity,
+    TelemetryProvider,
+)
 
 from .artifacts import ArtifactStore
 from .errors import RecoveryError, RuntimeInvariantError
@@ -97,6 +102,7 @@ class GraphRuntime:
         executor: RuntimeExecutor,
         verifier: RuntimeVerifier,
         clock: Callable[[], datetime] = utc_now,
+        telemetry: TelemetryProvider | None = None,
     ) -> None:
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
@@ -107,6 +113,7 @@ class GraphRuntime:
         self.executor = executor
         self.verifier = verifier
         self.clock = clock
+        self.telemetry = telemetry or NoOpTelemetryProvider()
         self._graphs: dict[str, ExecutionGraph] = {}
         self.parallel = ParallelCoordinator(self)
         self.events.flush(self.state)
@@ -268,6 +275,17 @@ class GraphRuntime:
         self.events.flush(self.state)
 
     def recover(self, run_id: str, graph: ExecutionGraph, contract_hash: str) -> None:
+        identity = TelemetryIdentity(run_id=run_id)
+        with self.telemetry.span(
+            "ge.runtime.recovery",
+            identity,
+            {"ge.component": "runtime", "ge.operation": "recover", "ge.recovered": True},
+            links=(self.telemetry.link(identity),),
+        ) as span:
+            self._recover(run_id, graph, contract_hash)
+            span.set_result("succeeded")
+
+    def _recover(self, run_id: str, graph: ExecutionGraph, contract_hash: str) -> None:
         with self.state.read_connection() as connection:
             run = self._required_run(connection, run_id)
             if str(run["contract_hash"]) != contract_hash:
@@ -296,6 +314,30 @@ class GraphRuntime:
             self._finish_uncertain_external_effect(run_id, node_id)
 
     def run(self, run_id: str, *, max_steps: int | None = None) -> TerminalStatus | RunStatus:
+        with self.telemetry.span(
+            "ge.runtime.run",
+            TelemetryIdentity(run_id=run_id),
+            {"ge.component": "runtime", "ge.operation": "run"},
+        ) as span:
+            result = self._run(run_id, max_steps=max_steps)
+            terminal = result.value in _TERMINAL_VALUES
+            span.set_result(result.value, terminal=terminal)
+            if terminal:
+                self.telemetry.mark_run_terminal(run_id)
+            usage = self.snapshot(run_id).budget_usage
+            self.telemetry.metric(
+                "ge.budget.usage",
+                usage.executor_calls,
+                labels={"component": "runtime", "operation": "run"},
+            )
+            self.telemetry.metric(
+                "ge.budget.usage",
+                usage.cost_units or 0,
+                labels={"component": "runtime", "operation": "run"},
+            )
+            return result
+
+    def _run(self, run_id: str, *, max_steps: int | None = None) -> TerminalStatus | RunStatus:
         graph = self._graph(run_id)
         steps = 0
         while max_steps is None or steps < max_steps:
@@ -949,39 +991,80 @@ class GraphRuntime:
         return attempt_id
 
     def _invoke(self, run_id: str, node: Node, attempt_id: str) -> Result | None:
-        try:
-            if node.node_type in {NodeType.PARALLEL, NodeType.SUBGRAPH}:
-                return self.parallel.step(run_id, node, attempt_id)
-            if node.node_type is NodeType.JOIN:
-                return self.parallel.join(run_id, node)
-            if node.node_type is NodeType.VERIFIER:
-                external = node.config.get("external") is True
-                return self.verifier.execute(
-                    run_id,
-                    node,
-                    attempt_id,
-                    idempotency_key=f"{run_id}:{node.node_id}" if external else None,
+        identity = TelemetryIdentity(run_id=run_id, node_id=node.node_id, attempt_id=attempt_id)
+        with self.telemetry.span(
+            "ge.runtime.node",
+            identity,
+            {
+                "ge.component": "runtime",
+                "ge.operation": "node",
+                "ge.attempt.number": int(attempt_id.rsplit(":", 1)[-1]),
+            },
+        ) as node_span:
+            attempt_number = int(attempt_id.rsplit(":", 1)[-1])
+            if attempt_number > 1:
+                self.telemetry.metric(
+                    "ge.operation.retry",
+                    1,
+                    labels={"component": "runtime", "operation": "node"},
                 )
-            return self.executor.execute(run_id, node, attempt_id)
-        except Exception as exc:  # Fake boundary is deliberately converted to protocol error.
-            error = Error(
-                schema_version="1.0",
-                kind=(
-                    ErrorKind.VERIFIER
-                    if node.node_type is NodeType.VERIFIER
-                    else ErrorKind.EXECUTOR
-                ),
-                code="runtime.boundary_exception",
-                message=str(exc),
-                retryable=False,
+            boundary_name = (
+                "ge.verifier.execution"
+                if node.node_type is NodeType.VERIFIER
+                else "ge.executor.invocation"
             )
-            if node.node_type is NodeType.VERIFIER:
-                return VerifierResult(
-                    schema_version="1.0", status=VerifierStatus.ERROR, summary=str(exc), error=error
+            component = "verifier" if node.node_type is NodeType.VERIFIER else "executor"
+            try:
+                with self.telemetry.span(
+                    boundary_name,
+                    identity,
+                    {"ge.component": component, "ge.operation": "execute"},
+                ) as boundary_span:
+                    result: Result | None
+                    if node.node_type in {NodeType.PARALLEL, NodeType.SUBGRAPH}:
+                        result = self.parallel.step(run_id, node, attempt_id)
+                    elif node.node_type is NodeType.JOIN:
+                        result = self.parallel.join(run_id, node)
+                    elif node.node_type is NodeType.VERIFIER:
+                        external = node.config.get("external") is True
+                        result = self.verifier.execute(
+                            run_id,
+                            node,
+                            attempt_id,
+                            idempotency_key=(f"{run_id}:{node.node_id}" if external else None),
+                        )
+                    else:
+                        result = self.executor.execute(run_id, node, attempt_id)
+                    status = self._result_status(result) if result is not None else "pending"
+                    boundary_span.set_result(status)
+                    node_span.set_result(status)
+                    return result
+            except Exception as exc:  # Boundary converts exceptions to the existing protocol error.
+                node_span.set_result("error")
+                error = Error(
+                    schema_version="1.0",
+                    kind=(
+                        ErrorKind.VERIFIER
+                        if node.node_type is NodeType.VERIFIER
+                        else ErrorKind.EXECUTOR
+                    ),
+                    code="runtime.boundary_exception",
+                    message=str(exc),
+                    retryable=False,
                 )
-            return ExecutorResult(
-                schema_version="1.0", status=ExecutorStatus.ERROR, summary=str(exc), error=error
-            )
+                if node.node_type is NodeType.VERIFIER:
+                    return VerifierResult(
+                        schema_version="1.0",
+                        status=VerifierStatus.ERROR,
+                        summary=str(exc),
+                        error=error,
+                    )
+                return ExecutorResult(
+                    schema_version="1.0",
+                    status=ExecutorStatus.ERROR,
+                    summary=str(exc),
+                    error=error,
+                )
 
     def _persist_result(self, run_id: str, node: Node, attempt_id: str, result: Result) -> None:
         if isinstance(result, VerifierResult) and result.status is VerifierStatus.PENDING:
