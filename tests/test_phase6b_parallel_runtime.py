@@ -574,4 +574,4 @@ def test_migration_8_is_repeatable_and_keeps_phase6a_compatibility(tmp_path: Pat
     assert runtime.state.service_migration_version == 7
     with runtime.state.read_connection() as connection:
         versions = [row[0] for row in connection.execute("SELECT version FROM schema_migrations")]
-    assert versions == list(range(1, 9))
+    assert versions == list(range(1, 10))

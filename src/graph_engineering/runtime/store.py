@@ -98,6 +98,12 @@ class StateStore:
                     "INSERT INTO schema_migrations(version, applied_at) VALUES (8, ?)",
                     (timestamp(),),
                 )
+            if 9 not in applied:
+                connection.executescript(_MIGRATION_9)
+                connection.execute(
+                    "INSERT INTO schema_migrations(version, applied_at) VALUES (9, ?)",
+                    (timestamp(),),
+                )
             connection.commit()
 
     @property
@@ -138,7 +144,13 @@ class StateStore:
 
     @property
     def parallel_migration_version(self) -> int:
-        """Actual storage head including Phase 6B parallel branch tables."""
+        """Compatibility level through Phase 6B; use container_migration_version for head."""
+
+        return min(self.container_migration_version, 8)
+
+    @property
+    def container_migration_version(self) -> int:
+        """Actual storage head including Phase 6C container execution state."""
 
         with self.read_connection() as connection:
             row = connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()
@@ -783,4 +795,32 @@ CREATE TABLE shared_budget_reservations (
     created_at TEXT NOT NULL,
     PRIMARY KEY(run_id, reservation_id)
 );
+"""
+
+_MIGRATION_9 = """
+CREATE TABLE container_executions (
+    execution_id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL,
+    node_id TEXT NOT NULL,
+    attempt_id TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL UNIQUE,
+    owner_id TEXT NOT NULL UNIQUE,
+    state TEXT NOT NULL,
+    handle TEXT UNIQUE,
+    image_digest TEXT NOT NULL,
+    config_fingerprint TEXT NOT NULL,
+    stdout_bytes INTEGER NOT NULL DEFAULT 0,
+    stderr_bytes INTEGER NOT NULL DEFAULT 0,
+    artifact_bytes INTEGER NOT NULL DEFAULT 0,
+    result_json TEXT,
+    cleanup_state TEXT NOT NULL,
+    residual_effect TEXT,
+    started_at TEXT,
+    deadline_at TEXT,
+    finished_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX container_executions_run_state
+ON container_executions(run_id, state, node_id);
 """

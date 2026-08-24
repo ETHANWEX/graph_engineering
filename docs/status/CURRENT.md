@@ -2,64 +2,79 @@
 
 ## 当前阶段
 
-Recovery Gate R0 已于 2026-08-24 通过 Human Review，并获授权在 `phase/6-enhancements` 创建
-单一本地 delivery commit。该 delivery 的身份是包含本 CURRENT 与 R0 handoff、且 parent 为
-`f9ee0b3` 的提交；SHA 在创建后通过 Git 核实，不尝试嵌入决定自身 SHA 的内容。Phase 6C 尚未
-开始；push 和 6C 启动仍需分别明确授权。
+Phase 6C Container Verifiers 实现与验收证据已完成并通过 Human Review；Human 已明确
+授权创建单一 Phase 6C delivery commit 并推送到 `phase/6-enhancements`。
+分支为 `phase/6-enhancements`，精确 pre-delivery baseline 是 R0 delivery
+`b7da3c4c7712db0f8fb01f14cd2d141008c5186a`；Phase 6C delivery 是包含本 CURRENT 和
+handoff 的单一 child commit，SHA 在创建后核实并推送到同一远端分支；
+`origin/main=eedc46d1a607c6169cb43eca79ef56bdd137efac`。
 
-Human 已于 2026-08-24 明确批准
-`f9ee0b330a5a22a99d48cb787356445d044fb2ae` 为 Phase 6B delivery。该 SHA 同时是当前本地 HEAD
-和 `origin/phase/6-enhancements`，R0 不 amend、reset、rebase 或改写该历史。
+## Phase 6C 已完成
 
-## R0 已完成
+- `project/container` 复用 exact-name Verifier Registry 和统一 `VerifierResult`；Docker CLI
+  和兼容 runtime 细节保持在 adapter 边界。缺失 runtime、版本不兼容、daemon 不可用
+  和能力不足为 typed preflight infrastructure error，不安装 runtime 或修改系统服务。
+- 冻结容器定义绑定 registry/repository/`sha256` digest/platform/provenance/entrypoint/config
+  fingerprint；拒绝 mutable tag、allowlist 越界和冻结漂移。
+- CPU、memory、PID、wall-clock、stdout/stderr、Artifact 和 concurrency 限额有限；Docker
+  log 两流并发限长读取，超额在读取过程中请求终止。
+- mount 仅允许已授权 root 下的相对路径，启动前重新 resolve；拒绝 Windows/POSIX
+  绝对路径、`..`、symlink/junction/reparse escape、Docker socket、home 和系统目录。
+  frozen/evidence 只读，writable mount 必须显式且最小化。
+- 默认 `network=none`；启用网络需 exact protocol/host/port 冻结策略且 adapter 必须
+  能可靠执行 DNS/redirect/proxy/custom-host 边界，否则 fail closed。
+- Secret 仅以 reference 冻结，执行时通过短命环境文件或 adapter request 注入；raw、
+  URL encoded、base64、overlap 和跨 chunk 内容在 Artifact/error/event/checkpoint/report 前脱敏。
+- SQLite migration 9 持久化 execution/owner/attempt/idempotency/handle/digest/fingerprint/
+  byte accounting/result/cleanup/residual state。恢复查询已有 handle，完成结果复用，无 handle
+  的 uncertain start 不重触发；parallel branch qualified identity 保持兼容。
+- pause/barrier 后不启动容器；interrupt/cancel 有界 stop/settlement；cleanup 仅按稳定
+  owner label 处理本 attempt 资源，失败与 residual 进入 Event、Artifact 和 Final Report。
 
-- README、CURRENT、Phase 6B handoff、Phase 6 路线和启动 prompts 已与实际 Git 状态及 Human
-  授权对齐；6B handoff 保留 pre-delivery snapshot，并追加可审计事实说明。
-- `pyproject.toml` 将支持窗口明确为 Python `>=3.12,<3.14`，声明 3.12/3.13 classifiers；mypy 和
-  Ruff 继续以 Python 3.12 作为最低语义目标。
-- pytest 不再强制复用仓库内 `.pytest-tmp`；正常宿主默认命令使用平台管理的临时根。Ruff
-  root discovery 排除 `.local` 与历史 `.pytest-*` ACL evidence。
-- 新增三个 R0 tooling contract tests，锁定 Python 窗口、非仓库全局 basetemp 和 Ruff 排除规则。
-- DESIGN 历史 locks 已核账：协议版本/迁移、Codex Session/Memory 原型、动态 Verifier 和容器进入
-  正式版本的决策已引用既有 ADR/阶段证据关闭；跨平台正式支持矩阵明确转入 Phase 6E。
-- 纠正 Phase 6B handoff 中非法 Graph CLI 退出码：实现和锁定测试的契约是 exit 2，不是误记的
-  exit 1。
+## 决策、迁移与兼容性
+
+- ADR-034：provider-neutral container 边界与不可变 image identity。
+- ADR-035：资源、mount、network 与 secret 的 fail-closed sandbox 策略。
+- ADR-036：持久恢复、cancel/settlement、owned cleanup 和 residual effect。
+- migration head 从 8 增加到 9；migration 1–9 repeatable。`parallel_migration_version=8`、
+  `service_migration_version=7` 等旧 compatibility view 保持。
+- `VerifierManifest` 内部 SDK 加法支持 `project/container`。公共 Schema 1.0 仍为 36 个，
+  export drift 为零；历史 serial Graph canonical 内容未改。
+- Runtime Service、IPC 1.0、MCP、Plugin、串行/并行 Runtime 和 query/report 只读边界保持兼容。
 
 ## 最终验证
 
-- Python 3.13.14，默认宿主 pytest：190 collected / 186 passed / 4 skipped，34.58s，exit 0。
-- Python 3.12.10，同一最终快照默认宿主 pytest：190 collected / 186 passed / 4 skipped，33.95s，
+- 修改前 sandbox baseline：190 collected，`62 passed / 3 skipped / 125 tmp_path ACL errors`，
+  12.46s，exit 1；没有产品断言失败。
+- 修改前宿主 baseline：Python 3.13.14 `186 passed / 4 skipped` in 34.23s；Python
+  3.12.10 `186 passed / 4 skipped` in 33.63s；均为 190 collected、exit 0。
+- Phase 6C focused + Registry + migration compatibility：32 passed in 5.13s，exit 0。
+- 最终 Python 3.13.14 宿主全量：215 collected / 211 passed / 4 skipped in 39.41s，
   exit 0。
-- R0 + Schema/CLI + migration + Phase 6A Service/MCP + Phase 6B Parallel focused：45 passed in
-  12.98s，exit 0。
-- mypy strict：124 source files，无问题；Ruff root lint 全部通过；Ruff format：124 files clean。
-- Schema export：36 files，committed drift 为零；migration 1–8 repeatability 由 focused/full suite
-  覆盖。
-- 历史和 Phase 6B valid Graph CLI exit 0；Phase 6B invalid Graph exit 2 并包含字段路径；Verifier
-  manifest validate exit 0。
+- 最终 Python 3.12.10 宿主全量：215 collected / 211 passed / 4 skipped in 38.36s，
+  exit 0。
+- mypy strict：126 source files 无问题；Ruff lint 通过；Ruff format：126 files clean。
+- Schema export：36 files，drift 为零；migration head 9。历史与 Phase 6B Graph CLI、
+  Verifier list/validate 均 exit 0，列表包含 `project/container`。
 
-受管沙箱会主动使 pytest 临时目录不可读，因此沙箱内 full run 的 fixture `PermissionError` 不是
-产品断言证据。正常宿主边界无需自定义 `--basetemp` 即可完成上述双版本全量回归。历史 ACL 目录
-均被保留，未删除或纳入 delivery source。
+四个 skipped collected instances 仍仅为现有 opt-in 真实 Codex 验收实例，Phase 6C 没有
+添加、弱化或伪装 skip。受管 sandbox 的 pytest 失败仅来自系统临时根 ACL；宿主
+证据使用全新固定 basetemp，不删除任何历史 `.pytest-*` 目录。
 
-## 未完成与未验证
+## 未验证与残留事项
 
-- 四个真实 Codex collected 实例仍默认跳过；真实 Plugin load + MCP、真实 GitHub PR/Checks、
-  Linux/macOS Runtime/IPC/worktree/parallel 仍未验证，统一进入 Phase 6E。
-- Phase 6C Container Verifiers、Phase 6D Autonomous Delivery Closure、Phase 6E Integration
-  Qualification、Phase 6F Observability 和 Phase 6G Optional UI 尚未开始。
-- Claude Code Adapter、分布式 Worker、系统启动服务和自动合并未排期。
+- 宿主无 Docker 与 Podman，因此真实容器隔离、cgroup/resource enforcement、mount/
+  network namespace、真实 stop/cleanup E2E 标记为 **unverified**。没有安装 runtime、
+  启动系统服务或拉取镜像。
+- exact network allowlist 在默认 Docker CLI adapter 中不被声称为可执行；该 adapter
+  仅安全支持 `network=none`，需要网络时必须提供可靠强制 exact policy 的兼容 adapter。
+- deterministic fake adapter/fake process 证据仅验证 Graph Engineering 协议和状态机，
+  不冒充真实容器隔离证据。没有容器、volume、network namespace 或外部 provider 副作用残留。
 
-## 工作区与授权边界
+## 工作区与下一门禁
 
-- `origin/main=eedc46d1a607c6169cb43eca79ef56bdd137efac`；本地 `main=a069b36` 落后 9 个提交，
-  不影响当前 Phase 6 baseline。
-- Human 已授权创建包含本文件的单一 R0 本地 delivery commit。该授权不包含 push、PR、main
-  修改/merge、Plugin 安装/发布、真实 GitHub 写入、历史重写或 Phase 6C 实现。
-- 精确变更与证据见 `docs/phases/phase-6r-handoff.md`。
-
-## 下一步
-
-创建并核实单一 R0 reconciliation delivery commit，确保其 parent 为 `f9ee0b3`、内容仅为已审
-R0 变更且工作树清洁。不要推送；push 需另行授权。本地与远端 R0 SHA 一致后，仍需单独授权才
-允许使用 `docs/prompts/phase-6c-start.md`。
+- Phase 6C 的单一 delivery commit 和 Phase 6 分支 push 已获授权；delivery SHA 在创建后通过
+  Git 核实。历史 pytest evidence 目录和 ignored 环境未删除。
+- 未授权 PR、main 修改/merge、Plugin 安装/发布、真实外部写入或 Phase 6D 实现。
+- 精确交接见 `docs/phases/phase-6c-handoff.md`。下一阶段是 Phase 6D Autonomous
+  Delivery Closure，启动 prompt 为 `docs/prompts/phase-6d-start.md`；开始实现仍需独立明确授权。

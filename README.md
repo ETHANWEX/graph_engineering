@@ -2,10 +2,12 @@
 
 Graph Engineering 是一个面向自治软件开发的图工程控制层。Human 通过自然语言定义需求和授权边界、随时查询或中断开发，并最终验收成果；Graph Runtime 在冻结的 Contract 内组织 Coding Agent、确定性工具、Verifier、反馈循环和外部系统，持续完成实现、验证、修复、审查与证据交付。
 
-> 当前状态：Phase 0–5 已进入远端 `main`；Phase 6A 与 6B 代码位于长期分支
-> `phase/6-enhancements`，当前本地/远端 HEAD 均为 Phase 6B commit `f9ee0b3`。Human 已于
-> 2026-08-24 明确批准该提交为 Phase 6B delivery，并已 Review/批准 Recovery Gate R0 的单一本地
-> delivery commit。R0 修复了状态漂移和可复现基线；push 和 Phase 6C 启动仍需单独授权。
+> 当前状态：Phase 0–5 已进入远端 `main`；Phase 6A、6B 与 Recovery Gate R0 位于
+> `phase/6-enhancements`，Phase 6C delivery 是 R0 baseline `b7da3c4` 的单一 child commit，其 SHA
+> 在创建后通过 Git 核实。Human 已于
+> Phase 6C Container Verifiers 实现与 deterministic evidence 已通过 Human Review，单一
+> delivery commit 和 Phase 6 分支 push 已获授权；PR、main 修改/merge、Plugin 安装发布和
+> Phase 6D 实现仍未授权。
 
 ## 已实现能力
 
@@ -85,8 +87,17 @@ Phase 0–6B 当前工作树提供：
   `error > blocked > failed > cancelled > succeeded` fail closed。
 - SQLite migration 8 保持 migration 1–7 和 Phase 6A service compatibility 可读；串行 Graph
   canonical SHA、Runtime Service、IPC、MCP 和 Plugin 行为保持兼容。
-- 190 个 pytest collected 实例（186 passed / 4 个真实 Codex 实例默认跳过）；mypy strict、Ruff、
-  36-schema drift、Graph CLI 和 migration 1–8 repeatability 全部通过。
+- `project/container` Verifier provider 与 Docker-compatible adapter；digest/platform/provenance
+  不可变镜像身份、精确 allowlist、冻结 config fingerprint 和 typed runtime preflight。
+- CPU/memory/PID/wall-clock/output/Artifact/concurrency 限额；已授权 root mount、
+  symlink/junction/reparse 逃逸拒绝、只读 frozen/evidence 和显式最小 writable mount。
+- 默认 `network=none`；启用网络需 exact protocol/host/port 冻结策略与可靠执行
+  adapter，否则 fail closed。Secret 仅引用注入并覆盖 raw/URL/base64/overlap/跨 chunk 脱敏。
+- SQLite migration 9 持久化 container owner/attempt/handle/digest/fingerprint/result/cleanup/
+  residual state；恢复查询已有 handle、不重复启动，cleanup 失败进入 Event、Artifact
+  和 Final Report。历史 migration compatibility views 保持。
+- 215 个 pytest collected 实例（211 passed / 4 个真实 Codex 实例默认跳过）；mypy strict、Ruff、
+  36-schema drift、Graph CLI 和 migration 1–9 repeatability 全部通过。
 
 开发安装：
 
@@ -281,15 +292,13 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 
 - 已合并阶段：Phase 0–5；Phase 5 通过 PR #6 进入 `origin/main`，实现/交接提交为
   `db7dd54` / `4ebeb2d`。
-- 当前分支：`phase/6-enhancements`；本地和远端 HEAD 均为 Phase 6B commit
-  `f9ee0b330a5a22a99d48cb787356445d044fb2ae`。Human 已于 2026-08-24 明确批准该提交为
-  Phase 6B delivery；R0 将该决定固化为版本化交接证据。
-- 当前活动门禁：Recovery Gate R0 已通过 Human Review，并获授权创建单一本地 delivery commit。
-  其结果包括交付事实、Python 3.12–3.13、默认 pytest/Ruff 路径和旧 completion locks；push
-  仍需单独授权，之后才按 6C 容器、6D 自治交付闭环、6E 真实集成认证、6F 遥测、6G 可选 UI
-  的顺序推进。
-- 当前未授权：新的 delivery commit/push、Graph Engineering PR、main 修改、merge/auto-merge、
-  Plugin 安装/发布、真实 GitHub 写入或 Phase 6C 实现。
+- 当前分支：`phase/6-enhancements`；Phase 6C delivery 是 R0 delivery
+  `b7da3c4c7712db0f8fb01f14cd2d141008c5186a` 的单一 child commit，本地/远端 SHA 在推送后核实。
+- 当前活动门禁：Phase 6C Container Verifiers 实现与 deterministic acceptance evidence
+  已通过 Human Review，单一 delivery commit/push 已获授权。真实容器 E2E 因宿主无 Docker/Podman
+  而明确 unverified，fixture 证据不冒充真实隔离证据。
+- 当前未授权：Graph Engineering PR、main 修改、merge/auto-merge、Plugin 安装/发布、
+  真实外部写入或 Phase 6D 实现。
 - GitHub CLI 2.97.0 已安装，`pr`、`run`、`api` 命令入口可用；当前未登录任何 GitHub host，
   因此私有仓库读取和真实 GitHub E2E 仍保持未验证。隔离 provider fixture 不冒充真实 E2E。
 - 当前设计：[DESIGN.md](DESIGN.md)
@@ -315,6 +324,9 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 - Recovery Gate R0 交接：[docs/phases/phase-6r-handoff.md](docs/phases/phase-6r-handoff.md)
 - Recovery Gate R0 启动 Prompt：[docs/prompts/phase-6r-start.md](docs/prompts/phase-6r-start.md)
 - Phase 6C 启动 Prompt：[docs/prompts/phase-6c-start.md](docs/prompts/phase-6c-start.md)
+- Phase 6C 范围：[docs/phases/phase-6c.md](docs/phases/phase-6c.md)
+- Phase 6C 交接：[docs/phases/phase-6c-handoff.md](docs/phases/phase-6c-handoff.md)
+- Phase 6D 启动 Prompt：[docs/prompts/phase-6d-start.md](docs/prompts/phase-6d-start.md)
 - 协作约定：[AGENTS.md](AGENTS.md)
 
 README 是项目对外的首要入口。每个阶段完成时都必须同步更新这里的架构、已实现能力、安装方式、示例命令和限制，避免 README 描述超前于代码。

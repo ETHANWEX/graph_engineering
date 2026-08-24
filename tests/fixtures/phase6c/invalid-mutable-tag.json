@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "verifier_id": "invalid-container",
+  "revision": 1,
+  "verifier_type": "project/container",
+  "runtime": "container",
+  "entrypoint": ["/verifier"],
+  "container": {
+    "image": {
+      "registry": "registry.example.com",
+      "repository": "graph/verifier:latest",
+      "platform": "linux/amd64",
+      "provenance": {"builder": "fixture"}
+    },
+    "entrypoint": ["/verifier"],
+    "resources": {
+      "cpu_count": 1,
+      "memory_bytes": 1024,
+      "pids": 2,
+      "timeout_seconds": 1,
+      "max_stdout_bytes": 4,
+      "max_stderr_bytes": 4,
+      "max_artifact_bytes": 4,
+      "max_concurrency": 1
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "verifier_id": "container-fixture",
+  "revision": 1,
+  "verifier_type": "project/container",
+  "runtime": "container",
+  "entrypoint": ["/verifier"],
+  "capabilities": {
+    "network": {"allow": []},
+    "filesystem": {"read": ["workspace"], "write": ["artifacts"]},
+    "secrets": ["API_TOKEN"]
+  },
+  "external_side_effects": false,
+  "container": {
+    "image": {
+      "registry": "registry.example.com",
+      "repository": "graph/verifier",
+      "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "platform": "linux/amd64",
+      "provenance": {"builder": "fixture", "source": "commit:123"}
+    },
+    "entrypoint": ["/verifier"],
+    "config": {},
+    "resources": {
+      "cpu_count": 1,
+      "memory_bytes": 67108864,
+      "pids": 32,
+      "timeout_seconds": 30,
+      "max_stdout_bytes": 1024,
+      "max_stderr_bytes": 1024,
+      "max_artifact_bytes": 2048,
+      "max_concurrency": 1
+    },
+    "mounts": [],
+    "network": {"enabled": false, "allow": []},
+    "secret_environment": {"GE_SECRET_API_TOKEN": "API_TOKEN"},
+    "artifact_paths": []
+  }
+}

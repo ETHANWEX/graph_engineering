@@ -1,7 +1,7 @@
 # Phase 6 Roadmap
 
-- Status: Recovery Gate R0 reviewed and approved on 2026-08-24; its single local delivery commit is
-  authorized. Push and Phase 6C start remain separately gated.
+- Status: Phase 6C Human-reviewed; its single delivery commit and push are explicitly authorized.
+  Phase 6D start remains separately gated.
 - Baseline: `origin/main=eedc46d1a607c6169cb43eca79ef56bdd137efac`.
 - Branch: `phase/6-enhancements`.
 - Predecessor: Phase 5 implementation `db7dd54` and handoff

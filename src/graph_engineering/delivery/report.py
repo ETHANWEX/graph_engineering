@@ -174,6 +174,26 @@ class DeliveryReportCompiler:
                     (run_id,),
                 )
             ]
+            container_effects = [
+                {
+                    "execution_id": row["execution_id"],
+                    "run_id": row["run_id"],
+                    "node_id": row["node_id"],
+                    "attempt_id": row["attempt_id"],
+                    "idempotency_key": row["idempotency_key"],
+                    "owner_id": row["owner_id"],
+                    "state": row["state"],
+                    "handle": row["handle"],
+                    "image_digest": row["image_digest"],
+                    "config_fingerprint": row["config_fingerprint"],
+                    "cleanup_state": row["cleanup_state"],
+                    "residual_effect": row["residual_effect"],
+                }
+                for row in connection.execute(
+                    "SELECT * FROM container_executions WHERE run_id=? ORDER BY node_id,attempt_id",
+                    (run_id,),
+                )
+            ]
             budget = connection.execute(
                 "SELECT * FROM budgets WHERE run_id=?", (run_id,)
             ).fetchone()
@@ -213,7 +233,7 @@ class DeliveryReportCompiler:
             "pr": dict(pr) if pr else None,
             "controls": controls + decisions,
             "events": events,
-            "effects": handles,
+            "effects": [*handles, *container_effects],
             "budget": dict(budget) if budget else {},
             "artifacts": artifacts,
             "patch_texts": patch_texts,
