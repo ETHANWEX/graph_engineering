@@ -1,0 +1,14 @@
+:root { color-scheme: light dark; font-family: system-ui, sans-serif; line-height: 1.5; }
+body { margin: 0 auto; max-width: 76rem; padding: 1rem; }
+header, main, footer, section, aside { display: block; }
+section, aside { border: 1px solid currentColor; border-radius: .35rem; margin: 1rem 0; padding: 1rem; }
+.confirmation { border-width: .25rem; }
+.facts, textarea { box-sizing: border-box; max-height: 24rem; overflow: auto; white-space: pre-wrap; width: 100%; }
+form { border-top: 1px solid currentColor; margin-top: 1rem; padding-top: 1rem; }
+label { display: block; font-weight: 600; margin-top: .5rem; }
+button, select, textarea { font: inherit; }
+button { min-height: 2.75rem; padding: .5rem 1rem; }
+.skip { left: -10000px; position: absolute; }
+.skip:focus { left: 1rem; position: static; }
+:focus-visible { outline: .2rem solid Highlight; outline-offset: .2rem; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }

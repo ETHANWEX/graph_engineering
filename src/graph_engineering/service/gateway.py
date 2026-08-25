@@ -19,7 +19,12 @@ from graph_engineering.models import (
     QueryControlIntent,
     StateChangeControlIntent,
 )
-from graph_engineering.models.control import ControlReasonCode, StateChangeAction, Urgency
+from graph_engineering.models.control import (
+    ControlOutcome,
+    ControlReasonCode,
+    StateChangeAction,
+    Urgency,
+)
 from graph_engineering.observability import (
     NoOpTelemetryProvider,
     TelemetryIdentity,
@@ -44,6 +49,9 @@ class HumanGateway:
         self.control_root = self.project_root / ".ge" / "control"
         self.state = StateStore(self.control_root / "phase3.db")
         self.conversations = ConversationRepository(self.state)
+        from .snapshot import UISnapshotReader
+
+        self.ui_snapshots = UISnapshotReader(self.project_root, project_id, self.state)
 
     def dispatch(self, operation: str, payload: dict[str, Any]) -> dict[str, Any]:
         run_id = str(payload.get("run_id")) if payload.get("run_id") else None
@@ -73,7 +81,19 @@ class HumanGateway:
             return self.status(payload)
         if operation == "report":
             return self.report(payload)
+        if operation == "project_snapshot":
+            return self.project_snapshot(payload)
+        if operation == "run_snapshot":
+            return self.run_snapshot(payload)
         raise ServiceError(ServiceErrorCode.INVALID_REQUEST, "unsupported gateway operation")
+
+    def project_snapshot(self, payload: dict[str, Any]) -> dict[str, Any]:
+        if payload:
+            raise ServiceError(ServiceErrorCode.INVALID_REQUEST, "project snapshot takes no input")
+        return self.ui_snapshots.project()
+
+    def run_snapshot(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self.ui_snapshots.project(run_id=self._target_run(payload))
 
     def run(self, payload: dict[str, Any]) -> dict[str, Any]:
         run_id = self._target_run(payload)
@@ -265,7 +285,62 @@ class HumanGateway:
             IntentCompiler(),
             runtime_resolver=self._runtime,
             observer=lambda _intent: None,
+            state_change_handler=self._delivery_control,
         )
+
+    def _delivery_control(
+        self,
+        intent: StateChangeControlIntent,
+        confirmation_message: HumanMessage | None,
+    ) -> ControlActionResult | None:
+        if intent.action not in {
+            StateChangeAction.ACCEPT,
+            StateChangeAction.REJECT,
+            StateChangeAction.REVISE,
+        }:
+            return None
+        from graph_engineering.delivery import AutonomousDeliveryCoordinator
+
+        if confirmation_message is None:
+            raise ServiceError(ServiceErrorCode.CONFLICT, "explicit confirmation is required")
+        message = confirmation_message.model_copy(update={"run_id": intent.run_id})
+        report_revision = self._latest_report_revision(intent.run_id)
+        record = AutonomousDeliveryCoordinator(
+            self.project_root,
+            executor=FakeExecutor(),
+            verifier=FakeVerifier(),
+        ).decide(
+            intent.action.value,
+            message,
+            reason=message.content if intent.action is not StateChangeAction.ACCEPT else "",
+            report_revision=report_revision,
+        )
+        status = {
+            StateChangeAction.ACCEPT: "accepted",
+            StateChangeAction.REJECT: "rejected",
+            StateChangeAction.REVISE: "revision_requested",
+        }[intent.action]
+        return ControlActionResult(
+            schema_version="1.0",
+            intent_id=intent.intent_id,
+            outcome=ControlOutcome.APPLIED,
+            state_changed=True,
+            resulting_run_status=status,
+            message=(
+                f"Human {intent.action.value} decision recorded; merge_performed="
+                f"{record.merge_performed}."
+            ),
+        )
+
+    def _latest_report_revision(self, run_id: str) -> int:
+        state = StateStore(self._run_root(run_id) / "state.db")
+        with state.read_connection() as connection:
+            row = connection.execute(
+                "SELECT MAX(revision) FROM delivery_report_revisions WHERE run_id=?", (run_id,)
+            ).fetchone()
+        if row is None or row[0] is None:
+            raise ServiceError(ServiceErrorCode.NOT_FOUND, "delivery report was not found")
+        return int(row[0])
 
     def _runtime(self, run_id: str) -> _GatewayRuntime:
         return _GatewayRuntime(self._run_root(run_id))

@@ -2,15 +2,16 @@
 
 Graph Engineering 是一个面向自治软件开发的图工程控制层。Human 通过自然语言定义需求和授权边界、随时查询或中断开发，并最终验收成果；Graph Runtime 在冻结的 Contract 内组织 Coding Agent、确定性工具、Verifier、反馈循环和外部系统，持续完成实现、验证、修复、审查与证据交付。
 
-> 当前状态：Phase 6F Observability 已在 `phase/6-enhancements` 上完成已授权的本地实现与验证，
-> 全部结果保持未提交并等待 Human Review。精确 baseline
-> 为 Phase 6E delivery `e1aa9c61f568b7dda6c77248bc87a000f539a0ca`，且已推送到同名远端。
-> Phase 6E 的真实 Plugin、GitHub、container、Linux/macOS 限制保持原样。Phase 6F delivery
-> commit/push/PR、main 修改/merge、发布和任何真实外部 telemetry 写入均未授权。
+> 当前状态：Phase 6G Optional Project UI 已在 `phase/6-enhancements` 上完成本地实现与验证，
+> 并进入本次已授权的单一 delivery commit 门禁。实现 baseline 与远端 Phase 6 HEAD 均为已由
+> Human 审核、接受并推送的 Phase 6F delivery
+> `ba30339922f9412cc369063efa2c136e0a3aef1f`。UI 是可选 presentation layer；Runtime SQLite
+> 仍是唯一 Run 权威，Human 消息与确认继续经过既有 Human Gateway。Phase 6 已排期路线至此结束；
+> 不会自动开始后续或未排期工作。
 
 ## 已实现能力
 
-Phase 0–6F 当前工作树提供：
+Phase 0–6F 已交付能力与 Phase 6G 可选 presentation layer 提供：
 
 - Python 3.12–3.13、Pydantic v2 和 Typer 的可安装 `src` layout 包。
 - 版本化 Task Contract、Execution Graph、Result、Control、Run 关系和 Report 协议。
@@ -130,6 +131,7 @@ ge start --project-root .
 ge service start --project-root . --project-id project
 ge service status --project-root .
 ge service stop --project-root .
+ge ui serve --project-root . --project-id project --actor-id human
 ge mcp-server --project-root .
 ge report <run-id>
 ge accept <run-id>
@@ -311,13 +313,13 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 
 - 已合并阶段：Phase 0–5；Phase 5 通过 PR #6 进入 `origin/main`，实现/交接提交为
   `db7dd54` / `4ebeb2d`。
-- 当前分支：`phase/6-enhancements`；本地与远端 Phase 6 HEAD 均为 Phase 6D delivery
-  `651352c056c5402c6a4a4057946822948a23ea66`，其唯一 parent 是 Phase 6C delivery
-  `50f1d0a47d6c210c407af79b5c00e73b43ea984e`。
-- 当前活动门禁：Phase 6F Observability 本地实现与无外部副作用验证。Phase 6E delivery
-  `e1aa9c61f568b7dda6c77248bc87a000f539a0ca` 已由 Human 接受并推送；其冻结 handoff 不重写。
-- 当前未授权：Graph Engineering PR、main 修改、merge/auto-merge、Plugin 安装/发布、
-  真实外部写入、Phase 6F delivery commit/push、真实 telemetry backend 或 Phase 6G。
+- 当前分支：`phase/6-enhancements`；本地与远端 Phase 6 HEAD 均为 Phase 6F delivery
+  `ba30339922f9412cc369063efa2c136e0a3aef1f`，其唯一 parent 是 Phase 6E delivery
+  `e1aa9c61f568b7dda6c77248bc87a000f539a0ca`。
+- 当前活动门禁：创建经本次 Human 授权的单一 Phase 6G delivery commit。Phase 6F 已由 Human
+  接受并推送；其冻结 handoff 不重写。Phase 6 已排期路线在 6G 后结束。
+- 未授权外推：push、PR、main 修改/merge、package/Plugin/UI 发布或外部 hosting；Phase 6G
+  完成后不得开始 Claude Code Adapter、分布式 worker 或未排期阶段。
 - GitHub CLI 2.97.0 已安装，`pr`、`run`、`api` 命令入口可用；当前未登录任何 GitHub host，
   因此私有仓库读取和真实 GitHub E2E 仍保持未验证。隔离 provider fixture 不冒充真实 E2E。
 - 当前设计：[DESIGN.md](DESIGN.md)

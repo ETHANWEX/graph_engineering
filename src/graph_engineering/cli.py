@@ -28,11 +28,39 @@ service_app = typer.Typer(help="Local Runtime Service lifecycle.", no_args_is_he
 qualification_app = typer.Typer(
     help="Versioned integration qualification evidence.", no_args_is_help=True
 )
+ui_app = typer.Typer(help="Optional local Project UI.", no_args_is_help=True)
 app.add_typer(graph_app, name="graph")
 app.add_typer(schema_app, name="schema")
 app.add_typer(verifier_app, name="verifier")
 app.add_typer(service_app, name="service")
 app.add_typer(qualification_app, name="qualification")
+app.add_typer(ui_app, name="ui")
+
+
+@ui_app.command("serve")
+def ui_serve(
+    project_root: Annotated[
+        Path, typer.Option("--project-root", exists=True, file_okay=False, resolve_path=True)
+    ] = Path("."),
+    project_id: Annotated[str, typer.Option("--project-id")] = "project",
+    actor_id: Annotated[str, typer.Option("--actor-id")] = "human",
+    port: Annotated[int, typer.Option("--port", min=0, max=65535)] = 0,
+) -> None:
+    """Serve the optional loopback UI; an existing Runtime Service remains authoritative."""
+
+    from graph_engineering.ui import ProjectUIServer
+
+    server = ProjectUIServer(
+        project_root,
+        project_id=project_id,
+        actor_id=actor_id,
+        port=port,
+    )
+    typer.echo(server.origin)
+    try:
+        server.serve()
+    except KeyboardInterrupt:
+        server.shutdown()
 
 
 @qualification_app.command("collect")

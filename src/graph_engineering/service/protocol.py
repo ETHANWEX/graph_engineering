@@ -50,6 +50,8 @@ class IPCRequest(BaseModel):
         "run",
         "status",
         "report",
+        "project_snapshot",
+        "run_snapshot",
         "pause",
         "resume",
         "interrupt",

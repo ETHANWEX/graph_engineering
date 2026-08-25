@@ -48,12 +48,17 @@ class NaturalLanguageControlService:
         *,
         runtime_resolver: Callable[[str], RuntimeControl],
         observer: Callable[[QueryControlIntent], object] | None = None,
+        state_change_handler: Callable[
+            [StateChangeControlIntent, HumanMessage | None], ControlActionResult | None
+        ]
+        | None = None,
         confirmation_ttl: timedelta = timedelta(minutes=15),
     ) -> None:
         self.conversations = conversations
         self.compiler = compiler
         self.runtime_resolver = runtime_resolver
         self.observer = observer
+        self.state_change_handler = state_change_handler
         self.confirmation_ttl = confirmation_ttl
 
     def handle(self, conversation_id: str, message: HumanMessage) -> ControlServiceResult:
@@ -131,7 +136,7 @@ class NaturalLanguageControlService:
         if str(row["status"]) == "applied" and row["result_json"] is not None:
             return ControlServiceResult.model_validate_json(str(row["result_json"]))
         intent = StateChangeControlIntent.model_validate_json(str(row["intent_json"]))
-        result = self._apply(intent)
+        result = self._apply(intent, confirmation_message=message)
         with self.conversations.state.transaction() as connection:
             connection.execute(
                 "UPDATE pending_confirmations SET status = 'applied', result_json = ?, "
@@ -149,7 +154,21 @@ class NaturalLanguageControlService:
             )
         return result
 
-    def _apply(self, intent: QueryControlIntent | StateChangeControlIntent) -> ControlServiceResult:
+    def _apply(
+        self,
+        intent: QueryControlIntent | StateChangeControlIntent,
+        *,
+        confirmation_message: HumanMessage | None = None,
+    ) -> ControlServiceResult:
+        if isinstance(intent, StateChangeControlIntent) and self.state_change_handler is not None:
+            handled = self.state_change_handler(intent, confirmation_message)
+            if handled is not None:
+                return ControlServiceResult(
+                    applied=handled.outcome.value == "applied",
+                    message=handled.message,
+                    intent_id=intent.intent_id,
+                    action_result=handled,
+                )
         runtime = self.runtime_resolver(intent.run_id)
         if isinstance(intent, QueryControlIntent) and self.observer is not None:
             before = runtime.snapshot(intent.run_id)

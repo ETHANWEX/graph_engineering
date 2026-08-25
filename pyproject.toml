@@ -36,6 +36,9 @@ ge = "graph_engineering.cli:app"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"graph_engineering.ui.assets" = ["*.css", "*.js"]
+
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers -p no:cacheprovider"
 testpaths = ["tests"]

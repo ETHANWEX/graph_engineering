@@ -30,3 +30,5 @@ historical file.
   [ADR-041](041-reproducible-local-package-qualification.md): qualification and packaging.
 - [ADR-042](042-non-authoritative-observability-provider.md): non-authoritative, secret-safe,
   bounded observability provider boundary.
+- [ADR-043](043-optional-local-project-ui.md): optional local UI, authoritative snapshot,
+  same-origin mutation and recovery boundary.

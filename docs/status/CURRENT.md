@@ -2,25 +2,41 @@
 
 ## 当前阶段
 
-Phase 6F Observability 已完成已授权的本地实现与无外部副作用验证，全部结果保持未提交并等待
-Human Review。长期分支为
+Phase 6G Optional Project UI 已完成本地实现与验证，并进入已授权的单一 delivery commit
+门禁。长期分支为
 `phase/6-enhancements`；baseline、本地 HEAD 与远端 Phase 6 HEAD 均为 Human 已接受并推送的
-Phase 6E delivery `e1aa9c61f568b7dda6c77248bc87a000f539a0ca`，其 parent 是 Phase 6D
-delivery `651352c056c5402c6a4a4057946822948a23ea66`；`origin/main` 保持
-`eedc46d1a607c6169cb43eca79ef56bdd137efac`。Phase 6E handoff 的 delivery 前措辞是冻结历史
-快照，不予重写。
+Phase 6F delivery `ba30339922f9412cc369063efa2c136e0a3aef1f`，其 parent 是 Phase 6E
+delivery `e1aa9c61f568b7dda6c77248bc87a000f539a0ca`；`origin/main` 保持
+`eedc46d1a607c6169cb43eca79ef56bdd137efac`。Phase 6F handoff 的 delivery 前措辞是冻结历史
+快照，不予重写；本文件记录实际 Phase 6F delivery 与 push 事实。
 
-## Phase 6F 当前范围
+## Phase 6G 当前范围
 
-- ADR-042 与 observability contract 1.0 定义非权威、secret-safe、bounded provider boundary。
-- 默认 disabled/no-op；deterministic in-memory exporter 用于本地测试，不依赖真实 collector。
-- Runtime/IPC/MCP/Agent/Verifier/Review/GitHub/Report/Human/recovery/cleanup 关联既有持久身份。
-- 不新增第三方依赖、SQLite migration 或公共 Schema；真实 OTLP/collector 保持 blocked。
-- 代码入口为 `graph_engineering.observability`；deterministic in-memory exporter 覆盖 sampling、
-  parent/link、restart/thread/async correlation、overflow/timeout/partial/exception、late telemetry、
-  bounded metric labels 与 raw/URL/base64 secret 拒绝。
-- Runtime/parallel、Executor Session、Verifier/container cleanup、Service/IPC/MCP、Review、GitHub、
-  Report 和 Human decision 使用可选 provider；默认构造行为保持 no-op。
+- ADR-043 起定义无新增依赖、离线、loopback-only 的可选 Project UI 与 UI/API contract 1.0。
+- UI 只通过 Runtime Service/Human Gateway 的版本化 API 读取 snapshot、提交 HumanMessage 和
+  confirmation；不直接打开 SQLite、worktree、Artifact、provider 或 qualification evidence。
+- 服务端渲染安全 HTML，静态资源随 wheel 打包；实时更新使用有界 polling，并从权威 snapshot
+  在 refresh/reconnect/Runtime restart 后恢复。
+- Origin/Host/CSRF/CSP/frame/MIME/no-store、安全 URL 与文本呈现、请求/响应/并发/slow-client
+  bounds、secret rejection 和键盘/语义 accessibility 均为 acceptance gate。
+- 不新增 SQLite migration 或公共 Core Schema；产品/package 仍为 0.8.0。
+
+## Phase 6G 验证与结论
+
+- test-first 红灯先证明 `graph_engineering.ui` 尚不存在；交付前审阅又用 3 个失败断言锁定原生
+  浏览器控制器、CSP script 边界与 wheel JavaScript asset，随后实现并恢复全绿。
+- Phase 6G focused 18 passed；受影响 Conversation/Control/Service/6D/6F/6G regression 60 passed。
+- Python 3.13 与 Python 3.12 最终全量均为 `262 passed / 4 skipped`；四个 skip 仍仅是历史 opt-in
+  real-Codex cases。mypy 145 source files clean，Ruff lint/format passed。
+- 36 Schema zero drift，serial/parallel Graph 与 Verifier list/validate passed；migration head 保持
+  10，Phase 6E qualification focused 10 passed。
+- 最终 wheel/sdist 在固定 `SOURCE_DATE_EPOCH` 下各两次 byte-identical；干净 Python 3.12/3.13
+  venv 从本地 wheel 安装并通过 0.8.0 metadata、CLI/UI entrypoint、958-byte CSS 与 3229-byte
+  JavaScript package assets、
+  static assets、36 Schema、serial/parallel Graph 和 Verifier smoke。精确哈希与编排失败见
+  `docs/phases/phase-6g-handoff.md`。
+- 没有真实 browser automation，因此浏览器/accessibility matrix 诚实标记 unverified；deterministic
+  HTTP 测试不冒充真实浏览器证据。外部 hosting、Linux/macOS UI、TLS/DNS/CDN 均未执行。
 
 ## Phase 6E 已交付基线
 
@@ -99,6 +115,6 @@ qualification 编排失败均保留在 release-readiness report，不以重跑�
 
 ## 工作区与下一门禁
 
-Phase 6F 结果必须保持未提交并等待 Human Review。未经再次明确授权，不得 commit、push、PR、
-修改/合并 main、发布 package/Plugin、向真实 collector/backend 写 telemetry、执行真实
-Codex/GitHub/container、创建 runner/VM、auto-merge 或开始 Phase 6G。
+Phase 6G 经本次 Human 授权完成单一 delivery commit 后，Phase 6 已排期路线结束。不得 push、PR、修改/合并 main、发布
+package/Plugin/UI、外部 hosting、真实 provider/telemetry 写入、auto-merge，或开始 Claude Code
+Adapter、分布式 worker与任何未排期阶段。
