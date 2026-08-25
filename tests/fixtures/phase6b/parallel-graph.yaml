@@ -1,0 +1,49 @@
+schema_version: "1.0"
+graph_id: phase-6b-parallel
+contract:
+  schema_version: "1.0"
+  contract_id: contract-parallel
+  revision: 1
+entry_node_id: fanout
+nodes:
+  - schema_version: "1.0"
+    node_id: fanout
+    node_type: parallel
+    objective: Run independent checks
+    parallel:
+      schema_version: "1.0"
+      max_concurrency: 2
+      branches:
+        - schema_version: "1.0"
+          branch_id: alpha
+          subgraph:
+            schema_version: "1.0"
+            subgraph_id: alpha-graph
+            entry_node_id: work
+            nodes:
+              - schema_version: "1.0"
+                node_id: work
+                node_type: agent
+                objective: Alpha work
+        - schema_version: "1.0"
+          branch_id: beta
+          subgraph:
+            schema_version: "1.0"
+            subgraph_id: beta-graph
+            entry_node_id: work
+            nodes:
+              - schema_version: "1.0"
+                node_id: work
+                node_type: agent
+                objective: Beta work
+  - schema_version: "1.0"
+    node_id: join
+    node_type: join
+    objective: Deterministically join branch results
+    join:
+      schema_version: "1.0"
+      parallel_node_id: fanout
+edges:
+  - schema_version: "1.0"
+    from_node: fanout
+    to_node: join

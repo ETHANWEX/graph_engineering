@@ -49,18 +49,24 @@ from graph_engineering.models.reports import (
 from graph_engineering.models.results import (
     ExecutorResult,
     ExecutorStatus,
+    ParallelResult,
     VerifierResult,
     VerifierStatus,
+)
+from graph_engineering.observability import (
+    NoOpTelemetryProvider,
+    TelemetryIdentity,
+    TelemetryProvider,
 )
 
 from .artifacts import ArtifactStore
 from .errors import RecoveryError, RuntimeInvariantError
 from .events import EventStore
-from .fakes import FakeExecutor
+from .parallel import ParallelCoordinator
 from .store import StateStore, timestamp, utc_now
 from .types import RunSnapshot
 
-Result = ExecutorResult | VerifierResult
+Result = ExecutorResult | VerifierResult | ParallelResult
 
 _TERMINAL_VALUES = {status.value for status in TerminalStatus}
 
@@ -82,6 +88,10 @@ class RuntimeVerifier(Protocol):
     def query(self, handle: str) -> VerifierResult: ...
 
 
+class RuntimeExecutor(Protocol):
+    def execute(self, run_id: str, node: Node, attempt_id: str) -> ExecutorResult: ...
+
+
 class GraphRuntime:
     """A synchronous serial scheduler around deterministic Fake boundaries."""
 
@@ -89,9 +99,10 @@ class GraphRuntime:
         self,
         root: Path,
         *,
-        executor: FakeExecutor,
+        executor: RuntimeExecutor,
         verifier: RuntimeVerifier,
         clock: Callable[[], datetime] = utc_now,
+        telemetry: TelemetryProvider | None = None,
     ) -> None:
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
@@ -102,7 +113,9 @@ class GraphRuntime:
         self.executor = executor
         self.verifier = verifier
         self.clock = clock
+        self.telemetry = telemetry or NoOpTelemetryProvider()
         self._graphs: dict[str, ExecutionGraph] = {}
+        self.parallel = ParallelCoordinator(self)
         self.events.flush(self.state)
 
     def create_run(
@@ -192,6 +205,9 @@ class GraphRuntime:
                         route_resolved,
                     ),
                 )
+            self.parallel.initialize(connection, run_id, graph.nodes)
+            if checkpoint_state is not None:
+                self.parallel.inherit(connection, run_id, checkpoint_state)
             connection.execute(
                 """
                 INSERT INTO budgets(
@@ -259,6 +275,17 @@ class GraphRuntime:
         self.events.flush(self.state)
 
     def recover(self, run_id: str, graph: ExecutionGraph, contract_hash: str) -> None:
+        identity = TelemetryIdentity(run_id=run_id)
+        with self.telemetry.span(
+            "ge.runtime.recovery",
+            identity,
+            {"ge.component": "runtime", "ge.operation": "recover", "ge.recovered": True},
+            links=(self.telemetry.link(identity),),
+        ) as span:
+            self._recover(run_id, graph, contract_hash)
+            span.set_result("succeeded")
+
+    def _recover(self, run_id: str, graph: ExecutionGraph, contract_hash: str) -> None:
         with self.state.read_connection() as connection:
             run = self._required_run(connection, run_id)
             if str(run["contract_hash"]) != contract_hash:
@@ -276,6 +303,7 @@ class GraphRuntime:
                 LEFT JOIN external_handles h
                   ON h.run_id = n.run_id AND h.node_id = n.node_id
                 WHERE n.run_id = ? AND n.status = 'running' AND h.handle IS NULL
+                  AND n.node_type NOT IN ('parallel', 'subgraph', 'join')
                 """,
                 (run_id,),
             ).fetchone()
@@ -286,6 +314,30 @@ class GraphRuntime:
             self._finish_uncertain_external_effect(run_id, node_id)
 
     def run(self, run_id: str, *, max_steps: int | None = None) -> TerminalStatus | RunStatus:
+        with self.telemetry.span(
+            "ge.runtime.run",
+            TelemetryIdentity(run_id=run_id),
+            {"ge.component": "runtime", "ge.operation": "run"},
+        ) as span:
+            result = self._run(run_id, max_steps=max_steps)
+            terminal = result.value in _TERMINAL_VALUES
+            span.set_result(result.value, terminal=terminal)
+            if terminal:
+                self.telemetry.mark_run_terminal(run_id)
+            usage = self.snapshot(run_id).budget_usage
+            self.telemetry.metric(
+                "ge.budget.usage",
+                usage.executor_calls,
+                labels={"component": "runtime", "operation": "run"},
+            )
+            self.telemetry.metric(
+                "ge.budget.usage",
+                usage.cost_units or 0,
+                labels={"component": "runtime", "operation": "run"},
+            )
+            return result
+
+    def _run(self, run_id: str, *, max_steps: int | None = None) -> TerminalStatus | RunStatus:
         graph = self._graph(run_id)
         steps = 0
         while max_steps is None or steps < max_steps:
@@ -294,10 +346,11 @@ class GraphRuntime:
                 return TerminalStatus(status.value)
             if status is RunStatus.PAUSED:
                 return status
-            if status in {RunStatus.PAUSE_REQUESTED, RunStatus.QUIESCING}:
+            if status is RunStatus.PAUSE_REQUESTED:
                 self._pause_at_safe_point(run_id)
                 return RunStatus.PAUSED
             if self._barrier(run_id) == StateChangeAction.INTERRUPT.value:
+                self.parallel.cancel_incomplete(run_id, "interrupt")
                 self._finish(run_id, TerminalStatus.INTERRUPTED, TerminalReason.HUMAN_INTERRUPTED)
                 return TerminalStatus.INTERRUPTED
             if self._budget_limit_reached(run_id):
@@ -315,7 +368,16 @@ class GraphRuntime:
             node_id = str(node_row["node_id"])
             node = self._node(graph, node_id)
             if str(node_row["status"]) == "running":
-                self._continue_external(run_id, node)
+                if node.node_type in {NodeType.PARALLEL, NodeType.SUBGRAPH}:
+                    attempt_id = self._latest_attempt_id(run_id, node.node_id)
+                    container_result: Result | None = self.parallel.step(run_id, node, attempt_id)
+                    if container_result is not None:
+                        self._persist_result(run_id, node, attempt_id, container_result)
+                        self._honor_barrier_after_result(run_id)
+                        if self._run_status(run_id) is RunStatus.RUNNING:
+                            self._route_result(run_id, graph, node.node_id)
+                else:
+                    self._continue_external(run_id, node)
                 steps += 1
                 continue
 
@@ -344,6 +406,18 @@ class GraphRuntime:
         return self._run_status(run_id)
 
     def cancel(self, run_id: str) -> None:
+        with self.state.transaction() as connection:
+            run = self._required_run(connection, run_id)
+            if str(run["status"]) in _TERMINAL_VALUES:
+                return
+            connection.execute(
+                "UPDATE runs SET status=?,barrier='cancel',updated_at=? WHERE run_id=?",
+                (RunStatus.QUIESCING.value, timestamp(), run_id),
+            )
+            self._checkpoint(connection, run_id, "cancel_requested")
+            self.state.enqueue_event(connection, "run.cancel_requested", run_id)
+        self.parallel.cancel_incomplete(run_id, "cancel")
+        self._cancel_external_handles(run_id)
         self._finish(run_id, TerminalStatus.CANCELLED, TerminalReason.HUMAN_CANCELLED)
 
     def charge_cost(self, run_id: str, cost_units: float, *, node_id: str | None = None) -> None:
@@ -375,6 +449,78 @@ class GraphRuntime:
         self.events.flush(self.state)
         if self._budget_limit_reached(run_id, node, cost_check_after_charge=True):
             self._finish(run_id, TerminalStatus.FAILED, TerminalReason.BUDGET_EXHAUSTED)
+
+    def reserve_cost(
+        self,
+        run_id: str,
+        reservation_id: str,
+        cost_units: float,
+        *,
+        node_id: str | None = None,
+    ) -> bool:
+        """Atomically reserve shared cost before a concurrent side effect starts."""
+
+        if not reservation_id or cost_units <= 0:
+            raise ValueError("reservation_id and positive cost_units are required")
+        with self.state.transaction() as connection:
+            existing = connection.execute(
+                "SELECT cost_units,node_id FROM shared_budget_reservations "
+                "WHERE run_id=? AND reservation_id=?",
+                (run_id, reservation_id),
+            ).fetchone()
+            if existing is not None:
+                if float(existing["cost_units"]) != cost_units or existing["node_id"] != node_id:
+                    raise RuntimeInvariantError("budget reservation identity collision")
+                return True
+            run = self._required_run(connection, run_id)
+            if str(run["status"]) != RunStatus.RUNNING.value or run["barrier"] is not None:
+                return False
+            budget_row = connection.execute(
+                "SELECT cost_units,max_cost_units FROM budgets WHERE run_id=?", (run_id,)
+            ).fetchone()
+            if budget_row is None or budget_row["max_cost_units"] is None:
+                raise RuntimeInvariantError("cost reservation requires a configured cost budget")
+            current = float(budget_row["cost_units"] or 0)
+            if current + cost_units > float(budget_row["max_cost_units"]):
+                return False
+            if node_id is not None:
+                node_row = connection.execute(
+                    "SELECT cost_units FROM nodes WHERE run_id=? AND node_id=?", (run_id, node_id)
+                ).fetchone()
+                graph_node = self._node(self._graph(run_id), node_id)
+                if node_row is None:
+                    raise RuntimeInvariantError("budget reservation node is missing")
+                if (
+                    graph_node.budget is not None
+                    and graph_node.budget.max_cost_units is not None
+                    and float(node_row["cost_units"]) + cost_units
+                    > graph_node.budget.max_cost_units
+                ):
+                    return False
+            connection.execute(
+                "INSERT INTO shared_budget_reservations("
+                "run_id,reservation_id,node_id,cost_units,created_at) VALUES (?,?,?,?,?)",
+                (run_id, reservation_id, node_id, cost_units, timestamp()),
+            )
+            connection.execute(
+                "UPDATE budgets SET cost_units=COALESCE(cost_units,0)+? WHERE run_id=?",
+                (cost_units, run_id),
+            )
+            if node_id is not None:
+                connection.execute(
+                    "UPDATE nodes SET cost_units=cost_units+? WHERE run_id=? AND node_id=?",
+                    (cost_units, run_id, node_id),
+                )
+            self._checkpoint(connection, run_id, "cost_reserved")
+            self.state.enqueue_event(
+                connection,
+                "budget.reserved",
+                run_id,
+                node_id=node_id,
+                payload={"reservation_id": reservation_id, "cost_units": cost_units},
+            )
+        self.events.flush(self.state)
+        return True
 
     def store_artifact(
         self,
@@ -493,6 +639,7 @@ class GraphRuntime:
             and intent.action is StateChangeAction.INTERRUPT
             and changed
         ):
+            self.parallel.cancel_pending(intent.run_id, "interrupt")
             self._cancel_external_handles(intent.run_id)
         return ControlActionResult(
             schema_version="1.0",
@@ -602,6 +749,14 @@ class GraphRuntime:
                     (run_id,),
                 )
             )
+            branches = list(
+                connection.execute(
+                    "SELECT container_node_id,branch_id,status,current_node_id "
+                    "FROM parallel_branches WHERE run_id=? "
+                    "ORDER BY container_node_id,branch_order,branch_id",
+                    (run_id,),
+                )
+            )
             budget_row = connection.execute(
                 "SELECT * FROM budgets WHERE run_id = ?", (run_id,)
             ).fetchone()
@@ -656,6 +811,15 @@ class GraphRuntime:
                 (str(row["from_node"]), str(row["to_node"]), int(row["traversal_count"]))
                 for row in edges
             ),
+            branch_states=tuple(
+                (
+                    str(row["container_node_id"]),
+                    str(row["branch_id"]),
+                    str(row["status"]),
+                    cast(str | None, row["current_node_id"]),
+                )
+                for row in branches
+            ),
             budget=configured_budget,
             budget_usage=usage,
             relationship=relationship,
@@ -691,6 +855,20 @@ class GraphRuntime:
         if row is None:
             raise RuntimeInvariantError("FinalReport is not available for a non-terminal Run")
         return FinalReport.model_validate_json(str(row["report_json"]))
+
+    def node_result(self, run_id: str, node_id: str) -> Result:
+        with self.state.read_connection() as connection:
+            row = connection.execute(
+                "SELECT result_json FROM nodes WHERE run_id=? AND node_id=?", (run_id, node_id)
+            ).fetchone()
+        if row is None or row["result_json"] is None:
+            raise RuntimeInvariantError("node result is not available")
+        payload = cast(dict[str, Any], json.loads(str(row["result_json"])))
+        if "branches" in payload:
+            return ParallelResult.model_validate(payload)
+        if payload.get("status") in {"pending", "passed"} or "failure_details" in payload:
+            return VerifierResult.model_validate(payload)
+        return ExecutorResult.model_validate(payload)
 
     def _graph(self, run_id: str) -> ExecutionGraph:
         graph = self._graphs.get(run_id)
@@ -746,7 +924,14 @@ class GraphRuntime:
             budget = connection.execute(
                 "SELECT * FROM budgets WHERE run_id = ?", (run_id,)
             ).fetchone()
-            if budget is None or int(budget["executor_calls"]) >= int(budget["max_executor_calls"]):
+            count_call = node.node_type not in {
+                NodeType.PARALLEL,
+                NodeType.SUBGRAPH,
+                NodeType.JOIN,
+            }
+            if budget is None or (
+                count_call and int(budget["executor_calls"]) >= int(budget["max_executor_calls"])
+            ):
                 raise _BudgetExhausted
             node_row = connection.execute(
                 "SELECT attempt_count, status, first_started_at, cost_units, repair_iterations "
@@ -772,10 +957,11 @@ class GraphRuntime:
                 "VALUES (?, ?, ?, ?, 'running', ?)",
                 (attempt_id, run_id, node.node_id, number, self._timestamp()),
             )
-            connection.execute(
-                "UPDATE budgets SET executor_calls = executor_calls + 1 WHERE run_id = ?",
-                (run_id,),
-            )
+            if count_call:
+                connection.execute(
+                    "UPDATE budgets SET executor_calls = executor_calls + 1 WHERE run_id = ?",
+                    (run_id,),
+                )
             if node.node_type is NodeType.VERIFIER and node.config.get("external") is True:
                 connection.execute(
                     """
@@ -805,35 +991,80 @@ class GraphRuntime:
         return attempt_id
 
     def _invoke(self, run_id: str, node: Node, attempt_id: str) -> Result | None:
-        try:
-            if node.node_type is NodeType.VERIFIER:
-                external = node.config.get("external") is True
-                return self.verifier.execute(
-                    run_id,
-                    node,
-                    attempt_id,
-                    idempotency_key=f"{run_id}:{node.node_id}" if external else None,
+        identity = TelemetryIdentity(run_id=run_id, node_id=node.node_id, attempt_id=attempt_id)
+        with self.telemetry.span(
+            "ge.runtime.node",
+            identity,
+            {
+                "ge.component": "runtime",
+                "ge.operation": "node",
+                "ge.attempt.number": int(attempt_id.rsplit(":", 1)[-1]),
+            },
+        ) as node_span:
+            attempt_number = int(attempt_id.rsplit(":", 1)[-1])
+            if attempt_number > 1:
+                self.telemetry.metric(
+                    "ge.operation.retry",
+                    1,
+                    labels={"component": "runtime", "operation": "node"},
                 )
-            return self.executor.execute(run_id, node, attempt_id)
-        except Exception as exc:  # Fake boundary is deliberately converted to protocol error.
-            error = Error(
-                schema_version="1.0",
-                kind=(
-                    ErrorKind.VERIFIER
-                    if node.node_type is NodeType.VERIFIER
-                    else ErrorKind.EXECUTOR
-                ),
-                code="runtime.boundary_exception",
-                message=str(exc),
-                retryable=False,
+            boundary_name = (
+                "ge.verifier.execution"
+                if node.node_type is NodeType.VERIFIER
+                else "ge.executor.invocation"
             )
-            if node.node_type is NodeType.VERIFIER:
-                return VerifierResult(
-                    schema_version="1.0", status=VerifierStatus.ERROR, summary=str(exc), error=error
+            component = "verifier" if node.node_type is NodeType.VERIFIER else "executor"
+            try:
+                with self.telemetry.span(
+                    boundary_name,
+                    identity,
+                    {"ge.component": component, "ge.operation": "execute"},
+                ) as boundary_span:
+                    result: Result | None
+                    if node.node_type in {NodeType.PARALLEL, NodeType.SUBGRAPH}:
+                        result = self.parallel.step(run_id, node, attempt_id)
+                    elif node.node_type is NodeType.JOIN:
+                        result = self.parallel.join(run_id, node)
+                    elif node.node_type is NodeType.VERIFIER:
+                        external = node.config.get("external") is True
+                        result = self.verifier.execute(
+                            run_id,
+                            node,
+                            attempt_id,
+                            idempotency_key=(f"{run_id}:{node.node_id}" if external else None),
+                        )
+                    else:
+                        result = self.executor.execute(run_id, node, attempt_id)
+                    status = self._result_status(result) if result is not None else "pending"
+                    boundary_span.set_result(status)
+                    node_span.set_result(status)
+                    return result
+            except Exception as exc:  # Boundary converts exceptions to the existing protocol error.
+                node_span.set_result("error")
+                error = Error(
+                    schema_version="1.0",
+                    kind=(
+                        ErrorKind.VERIFIER
+                        if node.node_type is NodeType.VERIFIER
+                        else ErrorKind.EXECUTOR
+                    ),
+                    code="runtime.boundary_exception",
+                    message=str(exc),
+                    retryable=False,
                 )
-            return ExecutorResult(
-                schema_version="1.0", status=ExecutorStatus.ERROR, summary=str(exc), error=error
-            )
+                if node.node_type is NodeType.VERIFIER:
+                    return VerifierResult(
+                        schema_version="1.0",
+                        status=VerifierStatus.ERROR,
+                        summary=str(exc),
+                        error=error,
+                    )
+                return ExecutorResult(
+                    schema_version="1.0",
+                    status=ExecutorStatus.ERROR,
+                    summary=str(exc),
+                    error=error,
+                )
 
     def _persist_result(self, run_id: str, node: Node, attempt_id: str, result: Result) -> None:
         if isinstance(result, VerifierResult) and result.status is VerifierStatus.PENDING:
@@ -921,6 +1152,8 @@ class GraphRuntime:
 
     @staticmethod
     def _node_status(result: Result) -> str:
+        if isinstance(result, ParallelResult):
+            return result.status.value
         if isinstance(result, ExecutorResult):
             return result.status.value
         mapping = {
@@ -936,6 +1169,17 @@ class GraphRuntime:
     @staticmethod
     def _result_status(result: Result) -> str:
         return result.status.value
+
+    def _latest_attempt_id(self, run_id: str, node_id: str) -> str:
+        with self.state.read_connection() as connection:
+            row = connection.execute(
+                "SELECT attempt_id FROM attempts WHERE run_id=? AND node_id=? "
+                "ORDER BY attempt_number DESC LIMIT 1",
+                (run_id, node_id),
+            ).fetchone()
+        if row is None:
+            raise RuntimeInvariantError("running container node has no attempt")
+        return str(row["attempt_id"])
 
     def _route_result(self, run_id: str, graph: ExecutionGraph, node_id: str) -> None:
         if self._barrier(run_id) is not None:
@@ -979,6 +1223,8 @@ class GraphRuntime:
                 self._finish(run_id, TerminalStatus.SUCCEEDED, TerminalReason.COMPLETED)
             elif status == "failed":
                 self._finish(run_id, TerminalStatus.FAILED, TerminalReason.ACCEPTANCE_FAILED)
+            elif status == "blocked":
+                self._finish(run_id, TerminalStatus.FAILED, TerminalReason.BUDGET_EXHAUSTED)
             elif status == "cancelled":
                 self._finish(run_id, TerminalStatus.CANCELLED, TerminalReason.HUMAN_CANCELLED)
             else:
@@ -1479,6 +1725,35 @@ class GraphRuntime:
                 (run_id,),
             )
         ]
+        branches = [
+            dict(row)
+            for row in connection.execute(
+                "SELECT container_node_id,branch_id,branch_order,subgraph_json,subgraph_hash,"
+                "status,current_node_id,result_json,started_at,finished_at "
+                "FROM parallel_branches WHERE run_id=? "
+                "ORDER BY container_node_id,branch_order,branch_id",
+                (run_id,),
+            )
+        ]
+        branch_nodes = [
+            dict(row)
+            for row in connection.execute(
+                "SELECT container_node_id,branch_id,node_id,node_type,status,attempt_count,"
+                "result_json,route_resolved,first_started_at,cost_units,repair_iterations "
+                "FROM parallel_branch_nodes WHERE run_id=? "
+                "ORDER BY container_node_id,branch_id,node_id",
+                (run_id,),
+            )
+        ]
+        branch_edges = [
+            dict(row)
+            for row in connection.execute(
+                "SELECT container_node_id,branch_id,from_node,to_node,traversal_count "
+                "FROM parallel_branch_edge_traversals WHERE run_id=? "
+                "ORDER BY container_node_id,branch_id,from_node,to_node",
+                (run_id,),
+            )
+        ]
         state = {
             "run_id": run_id,
             "reason": reason,
@@ -1488,6 +1763,9 @@ class GraphRuntime:
             "nodes": nodes,
             "edges": edges,
             "artifacts": artifacts,
+            "branches": branches,
+            "branch_nodes": branch_nodes,
+            "branch_edges": branch_edges,
         }
         checkpoint_ref = f"checkpoint:{uuid.uuid4()}"
         connection.execute(

@@ -42,6 +42,7 @@ class VerifierRegistry:
 
 def builtin_registry() -> VerifierRegistry:
     from .command import CommandVerifier
+    from .container import ContainerVerifier
     from .http_pipeline import HttpPipelineVerifier
     from .subprocess import SubprocessVerifier
 
@@ -49,4 +50,5 @@ def builtin_registry() -> VerifierRegistry:
     registry.register("builtin/command", CommandVerifier)
     registry.register("builtin/http-pipeline", HttpPipelineVerifier)
     registry.register("project/subprocess", SubprocessVerifier)
+    registry.register("project/container", ContainerVerifier)
     return registry

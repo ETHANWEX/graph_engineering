@@ -72,6 +72,12 @@ class ExecutionGraphCompiler:
                 ),
                 Node(
                     schema_version="1.0",
+                    node_id="review_fix",
+                    node_type=NodeType.AGENT,
+                    objective="Resolve only stable evidence-backed Review findings",
+                ),
+                Node(
+                    schema_version="1.0",
                     node_id="deliver",
                     node_type=NodeType.DELIVERY,
                     objective=f"Prepare {contract.delivery.delivery_type.value} delivery",
@@ -116,6 +122,14 @@ class ExecutionGraphCompiler:
                     to_node="deliver",
                     condition=_status("succeeded"),
                 ),
+                Edge(
+                    schema_version="1.0",
+                    from_node="review",
+                    to_node="review_fix",
+                    condition=_status("failed"),
+                    max_iterations=contract.budget.max_repair_iterations or 1,
+                ),
+                Edge(schema_version="1.0", from_node="review_fix", to_node=first_verifier),
             ]
         )
         return ExecutionGraph(

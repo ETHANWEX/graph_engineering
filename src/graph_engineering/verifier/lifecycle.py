@@ -265,6 +265,19 @@ class VerifierRepository:
                 "filesystem_write": list(manifest.capabilities.filesystem.write),
                 "secret_references": list(manifest.capabilities.secrets),
                 "external_side_effects": manifest.external_side_effects,
+                "container": (
+                    {
+                        "image": manifest.container.image.model_dump(mode="json"),
+                        "platform": manifest.container.image.platform,
+                        "network": manifest.container.network.model_dump(mode="json"),
+                        "resources": manifest.container.resources.model_dump(mode="json"),
+                        "mounts": [
+                            item.model_dump(mode="json") for item in manifest.container.mounts
+                        ],
+                    }
+                    if manifest.container is not None
+                    else None
+                ),
             },
             separators=(",", ":"),
             sort_keys=True,

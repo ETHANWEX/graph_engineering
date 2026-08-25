@@ -2,21 +2,22 @@
 
 Graph Engineering 是一个面向自治软件开发的图工程控制层。Human 通过自然语言定义需求和授权边界、随时查询或中断开发，并最终验收成果；Graph Runtime 在冻结的 Contract 内组织 Coding Agent、确定性工具、Verifier、反馈循环和外部系统，持续完成实现、验证、修复、审查与证据交付。
 
-> 当前状态：Human 批准的 Phase 2、3、4 已按顺序进入远端 `main`。Phase 5 从精确
-> `origin/main=8adf9e2760cc525a613c3eb27fd0835d77525a9c` 创建独立分支
-> `phase/5-review-github-delivery`，已完成多维 Review、requirement matrix、GitHub provider
-> 和所有终态交付，并经 Human 授权提交、推送。真实 PR、合并、main 修改、自动合并及
-> Phase 6 均未获授权。
+> 当前状态：Phase 6G Optional Project UI 已在 `phase/6-enhancements` 上完成本地实现与验证，
+> 并进入本次已授权的单一 delivery commit 门禁。实现 baseline 与远端 Phase 6 HEAD 均为已由
+> Human 审核、接受并推送的 Phase 6F delivery
+> `ba30339922f9412cc369063efa2c136e0a3aef1f`。UI 是可选 presentation layer；Runtime SQLite
+> 仍是唯一 Run 权威，Human 消息与确认继续经过既有 Human Gateway。Phase 6 已排期路线至此结束；
+> 不会自动开始后续或未排期工作。
 
 ## 已实现能力
 
-Phase 0–5 当前工作树提供：
+Phase 0–6F 已交付能力与 Phase 6G 可选 presentation layer 提供：
 
-- Python 3.12+、Pydantic v2 和 Typer 的可安装 `src` layout 包。
+- Python 3.12–3.13、Pydantic v2 和 Typer 的可安装 `src` layout 包。
 - 版本化 Task Contract、Execution Graph、Result、Control、Run 关系和 Report 协议。
-- 30 个提交到 `schemas/` 的公共 JSON Schema，以及稳定性测试。
+- 36 个工作树公共 JSON Schema，以及稳定性测试。
 - JSON/YAML Execution Graph 静态校验；错误包含字段路径并返回非零退出码。
-- 合法/非法 fixtures、36 个单元测试、mypy 严格类型检查和 Ruff 检查。
+- 合法/非法 fixtures、全量回归测试、mypy 严格类型检查和 Ruff 检查。
 - SQLite State Store（含迁移、事务状态机、checkpoint 和事件 outbox）。
 - 追加式 JSONL Event Store 与内容寻址 Artifact Store。
 - 单机、单任务、串行 Graph Runtime：受限条件边、修复循环、重试上限、Run/Node
@@ -69,8 +70,52 @@ Phase 0–5 当前工作树提供：
 - 所有终态的十文件版本化 delivery bundle、只读 `ge report`，以及经 HumanMessage、Intent
   Compiler 和确认策略的 `ge accept` / `ge reject`；accept 永不 merge。
 - SQLite migration 6 与 Phase 0–4 compatibility views；公共 Schema 1.0 仍为 30 个且无变化。
-- 156 个 pytest 测试（152 passed / 4 个真实 Codex 测试默认跳过）；Phase 0–4 的
-  135 collected / 132 passed / 3 skipped 基线保持。
+- 171 个 pytest 测试（167 passed / 4 个真实 Codex 测试默认跳过）；启动时 Phase 0–5 的
+  156 collected / 152 passed / 4 skipped 基线保持。
+- Phase 6A foreground Runtime Service、私有 project-local endpoint、health/version 和受控停止；
+  Windows 子进程退出与 Runtime 重启后从 SQLite 恢复 Conversation/Run 路由。
+- versioned/authenticated loopback IPC、project/workspace/request/idempotency identity、typed error、
+  有限 frame/timeout/retry，以及 mutation replay ledger；查询路径不写 Runtime 状态。
+- `ge mcp-server` 保留 `start/message/confirm/status/report` 五工具兼容前缀，并加法提供
+  `run/pause/resume/interrupt/cancel/accept/reject/revise`；全部复用 Human Gateway、
+  HumanMessage、Intent Compiler、确认策略、强类型 Runtime control 和只读 report/status API。
+- 仓库内 `plugins/graph-engineering` Codex Plugin（manifest、Skill、MCP config）；它不保存权威
+  Run 状态，也不直接写 SQLite/worktree/external handle。
+- 强类型 `parallel`、显式 `subgraph` 与 `join` 节点；branch ID 和 join aggregate 不依赖完成顺序。
+- 有界本机并发、SQLite 原子共享调用/成本预算、durable branch/node/attempt/checkpoint 状态，
+  restart 跳过已完成工作并轮询 checkpointed external handle。
+- active/pending branch 的 pause、interrupt、cancel durable barrier；聚合按
+  `error > blocked > failed > cancelled > succeeded` fail closed。
+- SQLite migration 8 保持 migration 1–7 和 Phase 6A service compatibility 可读；串行 Graph
+  canonical SHA、Runtime Service、IPC、MCP 和 Plugin 行为保持兼容。
+- `project/container` Verifier provider 与 Docker-compatible adapter；digest/platform/provenance
+  不可变镜像身份、精确 allowlist、冻结 config fingerprint 和 typed runtime preflight。
+- CPU/memory/PID/wall-clock/output/Artifact/concurrency 限额；已授权 root mount、
+  symlink/junction/reparse 逃逸拒绝、只读 frozen/evidence 和显式最小 writable mount。
+- 默认 `network=none`；启用网络需 exact protocol/host/port 冻结策略与可靠执行
+  adapter，否则 fail closed。Secret 仅引用注入并覆盖 raw/URL/base64/overlap/跨 chunk 脱敏。
+- SQLite migration 9 持久化 container owner/attempt/handle/digest/fingerprint/result/cleanup/
+  residual state；恢复查询已有 handle、不重复启动，cleanup 失败进入 Event、Artifact
+  和 Final Report。历史 migration compatibility views 保持。
+- confirmation 与 Run start 是独立幂等动作；durable coordinator 复用 Graph Runtime 完成
+  Implementer→Verifier/repair→fresh Review/review-fix→delivery→十文件 Final Report，unknown
+  start/provider effect fail closed，accept 永不 merge，revise 创建不可变 successor lineage。
+- `ge run/status --watch/pause/resume/interrupt/cancel/report --live/accept/reject/revise` 是 typed
+  Runtime/API route；deterministic local Git fixture 明确不冒充真实 Codex/GitHub/container E2E。
+- SQLite migration 10 保存 start claim 与 delivery stage checkpoint，并保持 migration 1–10、
+  historical database 和旧 compatibility view 可读。
+- 225 个 pytest collected 实例（221 passed / 4 个真实 Codex 实例默认跳过）；mypy strict、Ruff、
+  36-schema drift、Graph CLI 和 migration 1–10 repeatability 全部通过。
+- 独立于 Runtime SQLite 的 qualification evidence 1.0、secret-safe claim matrix、append-only
+  evidence 文件和只读 `ge qualification report`；blocked/unverified 永不映射为 passed。
+- 固定 `SOURCE_DATE_EPOCH` 的可重复 wheel/sdist、本地 Python 3.12/3.13 clean install、
+  Service/IPC/MCP smoke，以及 Phase 6D wheel 到当前 build 的数据保留升级资格证据。
+- observability contract 1.0 与 dependency-free OpenTelemetry provider boundary；默认 disabled/
+  no-op，支持 deterministic sampling、parent/link、持久 identity correlation、bounded attribute/
+  metric labels、buffer/batch/flush/shutdown 和 exporter failure isolation。
+- Runtime/parallel/recovery、Service/IPC/MCP、Agent Session、Verifier/container cleanup、Review/
+  review-fix、GitHub、Final Report 和 Human decision instrumentation；telemetry 不进入 SQLite、
+  route、budget、barrier、terminal 或 external-effect authority。
 
 开发安装：
 
@@ -83,6 +128,11 @@ python -m venv .venv
 
 ```powershell
 ge start --project-root .
+ge service start --project-root . --project-id project
+ge service status --project-root .
+ge service stop --project-root .
+ge ui serve --project-root . --project-id project --actor-id human
+ge mcp-server --project-root .
 ge report <run-id>
 ge accept <run-id>
 ge reject <run-id> --reason "..."
@@ -90,6 +140,8 @@ ge graph validate tests/fixtures/valid/graph.yaml
 ge verifier list
 ge verifier validate tests/fixtures/verifier/valid.json
 ge schema export --output schemas
+ge qualification collect --output qualification.json
+ge qualification report qualification.json
 ```
 
 `ge start` 可跨进程恢复同一 Conversation、Discovery unknown、Contract draft 和待确认状态。
@@ -253,16 +305,21 @@ Final Report 计划包含：需求与 Contract 版本、代码变更、测试和
 | Phase 3 | 持续自然语言控制对话、Discovery、Contract 冻结与修订 |
 | Phase 4 | 动态 Verifier、HTTP Pipeline、secret 和外部副作用控制 |
 | Phase 5 | 多维 Review、GitHub PR、证据矩阵和所有终态 Final Report |
-| Phase 6 | Codex Plugin、Claude Code、并行图、容器、遥测和可选 UI |
+| Phase 6 | Runtime/MCP/Plugin、并行图、R0 状态恢复、容器、自治交付闭环、真实集成认证、遥测和可选 UI；Claude Code 暂未排期 |
 
 Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足验收条件前，不进入下一阶段。
 
 ## 当前开发状态
 
-- 已合并阶段：Phase 0–4；Phase 2/3/4 批准提交分别为 `53df64c`、`b746b3f`、`7410a66`。
-- 活跃阶段：Phase 5 实现与验证完成，精确 baseline 为
-  `8adf9e2760cc525a613c3eb27fd0835d77525a9c`；实现提交 `db7dd54` 已推送到 Phase 5 远端分支。
-- 当前未授权：Graph Engineering 真实 PR、main 修改、merge、auto-merge、Phase 6。
+- 已合并阶段：Phase 0–5；Phase 5 通过 PR #6 进入 `origin/main`，实现/交接提交为
+  `db7dd54` / `4ebeb2d`。
+- 当前分支：`phase/6-enhancements`；本地与远端 Phase 6 HEAD 均为 Phase 6F delivery
+  `ba30339922f9412cc369063efa2c136e0a3aef1f`，其唯一 parent 是 Phase 6E delivery
+  `e1aa9c61f568b7dda6c77248bc87a000f539a0ca`。
+- 当前活动门禁：创建经本次 Human 授权的单一 Phase 6G delivery commit。Phase 6F 已由 Human
+  接受并推送；其冻结 handoff 不重写。Phase 6 已排期路线在 6G 后结束。
+- 未授权外推：push、PR、main 修改/merge、package/Plugin/UI 发布或外部 hosting；Phase 6G
+  完成后不得开始 Claude Code Adapter、分布式 worker 或未排期阶段。
 - GitHub CLI 2.97.0 已安装，`pr`、`run`、`api` 命令入口可用；当前未登录任何 GitHub host，
   因此私有仓库读取和真实 GitHub E2E 仍保持未验证。隔离 provider fixture 不冒充真实 E2E。
 - 当前设计：[DESIGN.md](DESIGN.md)
@@ -279,6 +336,22 @@ Phase 0–5 构成当前 MVP；Phase 6 是后续增强。任何阶段未满足�
 - Phase 4 交接：[docs/phases/phase-4-handoff.md](docs/phases/phase-4-handoff.md)
 - Phase 5 范围：[docs/phases/phase-5.md](docs/phases/phase-5.md)
 - Phase 5 交接：[docs/phases/phase-5-handoff.md](docs/phases/phase-5-handoff.md)
+- Phase 6 总路线：[docs/phases/phase-6.md](docs/phases/phase-6.md)
+- Phase 6A 范围：[docs/phases/phase-6a.md](docs/phases/phase-6a.md)
+- Phase 6A 启动 Prompt：[docs/prompts/phase-6a-start.md](docs/prompts/phase-6a-start.md)
+- Phase 6B 范围：[docs/phases/phase-6b.md](docs/phases/phase-6b.md)
+- Phase 6B 交接：[docs/phases/phase-6b-handoff.md](docs/phases/phase-6b-handoff.md)
+- Recovery Gate R0：[docs/phases/phase-6r.md](docs/phases/phase-6r.md)
+- Recovery Gate R0 交接：[docs/phases/phase-6r-handoff.md](docs/phases/phase-6r-handoff.md)
+- Recovery Gate R0 启动 Prompt：[docs/prompts/phase-6r-start.md](docs/prompts/phase-6r-start.md)
+- Phase 6C 启动 Prompt：[docs/prompts/phase-6c-start.md](docs/prompts/phase-6c-start.md)
+- Phase 6C 范围：[docs/phases/phase-6c.md](docs/phases/phase-6c.md)
+- Phase 6C 交接：[docs/phases/phase-6c-handoff.md](docs/phases/phase-6c-handoff.md)
+- Phase 6D 启动 Prompt：[docs/prompts/phase-6d-start.md](docs/prompts/phase-6d-start.md)
+- Phase 6D 范围：[docs/phases/phase-6d.md](docs/phases/phase-6d.md)
+- Phase 6D 交接：[docs/phases/phase-6d-handoff.md](docs/phases/phase-6d-handoff.md)
+- Phase 6E 范围：[docs/phases/phase-6e.md](docs/phases/phase-6e.md)
+- Phase 6E release readiness：[docs/qualification/phase-6e-release-readiness-v1.md](docs/qualification/phase-6e-release-readiness-v1.md)
 - 协作约定：[AGENTS.md](AGENTS.md)
 
 README 是项目对外的首要入口。每个阶段完成时都必须同步更新这里的架构、已实现能力、安装方式、示例命令和限制，避免 README 描述超前于代码。

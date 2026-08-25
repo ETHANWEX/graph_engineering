@@ -7,14 +7,15 @@ phase acceptance criteria pass.
 
 ## Development setup
 
-Python 3.12 or newer is required.
+Python 3.12 and 3.13 are the supported development interpreters. Future Python versions require an
+explicit compatibility update instead of being claimed implicitly.
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\python -m pip install -e ".[dev]"
 ```
 
-Run the complete Phase 0–5 checks (real Codex tests remain explicit acceptance commands):
+Run the complete current checks (real Codex tests remain explicit acceptance commands):
 
 ```powershell
 .venv\Scripts\python -m pytest
@@ -26,6 +27,10 @@ git diff --exit-code -- schemas
 $env:GE_RUN_REAL_CODEX="1"
 .venv\Scripts\python -m pytest tests/test_phase5_real_codex_review.py -m real_codex
 ```
+
+Pytest uses its platform-managed temporary root; do not restore a repository-local global
+`--basetemp`. Historical `.pytest-*` and `.local` evidence may have restrictive Windows ACLs and
+is excluded from Ruff discovery. Verification commands should target `src tests` as shown above.
 
 The committed JSON Schemas are compatibility surfaces. Update models, fixtures, tests, schemas,
 and an ADR together when deliberately changing a public protocol. Contract revisions append a new

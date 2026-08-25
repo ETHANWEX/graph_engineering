@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict
@@ -47,11 +48,18 @@ class NaturalLanguageControlService:
         *,
         runtime_resolver: Callable[[str], RuntimeControl],
         observer: Callable[[QueryControlIntent], object] | None = None,
+        state_change_handler: Callable[
+            [StateChangeControlIntent, HumanMessage | None], ControlActionResult | None
+        ]
+        | None = None,
+        confirmation_ttl: timedelta = timedelta(minutes=15),
     ) -> None:
         self.conversations = conversations
         self.compiler = compiler
         self.runtime_resolver = runtime_resolver
         self.observer = observer
+        self.state_change_handler = state_change_handler
+        self.confirmation_ttl = confirmation_ttl
 
     def handle(self, conversation_id: str, message: HumanMessage) -> ControlServiceResult:
         # The durable HumanMessage boundary deliberately precedes all interpretation and effects.
@@ -69,9 +77,18 @@ class NaturalLanguageControlService:
             with self.conversations.state.transaction() as connection:
                 connection.execute(
                     "INSERT OR IGNORE INTO pending_confirmations("
-                    "confirmation_id, conversation_id, intent_json, status, created_at) "
-                    "VALUES (?, ?, ?, 'pending', ?)",
-                    (confirmation_id, conversation_id, intent.canonical_json(), timestamp()),
+                    "confirmation_id, conversation_id, intent_json, status, created_at, actor_id, "
+                    "project_id, protocol_major, expires_at) "
+                    "VALUES (?, ?, ?, 'pending', ?, ?, ?, 1, ?)",
+                    (
+                        confirmation_id,
+                        conversation_id,
+                        intent.canonical_json(),
+                        timestamp(),
+                        message.actor_id,
+                        message.project_id,
+                        (datetime.now(UTC) + self.confirmation_ttl).isoformat(),
+                    ),
                 )
                 self.conversations.state.enqueue_event(
                     connection,
@@ -88,7 +105,12 @@ class NaturalLanguageControlService:
         return self._apply(intent)
 
     def confirm(
-        self, conversation_id: str, confirmation_id: str, message: HumanMessage
+        self,
+        conversation_id: str,
+        confirmation_id: str,
+        message: HumanMessage,
+        *,
+        protocol_major: int = 1,
     ) -> ControlServiceResult:
         self.conversations.append(conversation_id, message)
         if not any(token in message.content.casefold() for token in ("confirm", "确认", "同意")):
@@ -101,10 +123,20 @@ class NaturalLanguageControlService:
             ).fetchone()
         if row is None:
             raise KeyError(confirmation_id)
+        if row["actor_id"] is not None and str(row["actor_id"]) != message.actor_id:
+            raise PermissionError("pending confirmation belongs to another actor")
+        if row["project_id"] is not None and str(row["project_id"]) != message.project_id:
+            raise PermissionError("pending confirmation belongs to another project")
+        if int(row["protocol_major"]) != protocol_major:
+            raise ValueError("pending confirmation protocol is incompatible")
+        if row["expires_at"] is not None:
+            expires_at = datetime.fromisoformat(str(row["expires_at"]).replace("Z", "+00:00"))
+            if expires_at <= datetime.now(UTC):
+                raise TimeoutError("pending confirmation has expired")
         if str(row["status"]) == "applied" and row["result_json"] is not None:
             return ControlServiceResult.model_validate_json(str(row["result_json"]))
         intent = StateChangeControlIntent.model_validate_json(str(row["intent_json"]))
-        result = self._apply(intent)
+        result = self._apply(intent, confirmation_message=message)
         with self.conversations.state.transaction() as connection:
             connection.execute(
                 "UPDATE pending_confirmations SET status = 'applied', result_json = ?, "
@@ -122,7 +154,21 @@ class NaturalLanguageControlService:
             )
         return result
 
-    def _apply(self, intent: QueryControlIntent | StateChangeControlIntent) -> ControlServiceResult:
+    def _apply(
+        self,
+        intent: QueryControlIntent | StateChangeControlIntent,
+        *,
+        confirmation_message: HumanMessage | None = None,
+    ) -> ControlServiceResult:
+        if isinstance(intent, StateChangeControlIntent) and self.state_change_handler is not None:
+            handled = self.state_change_handler(intent, confirmation_message)
+            if handled is not None:
+                return ControlServiceResult(
+                    applied=handled.outcome.value == "applied",
+                    message=handled.message,
+                    intent_id=intent.intent_id,
+                    action_result=handled,
+                )
         runtime = self.runtime_resolver(intent.run_id)
         if isinstance(intent, QueryControlIntent) and self.observer is not None:
             before = runtime.snapshot(intent.run_id)

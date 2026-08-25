@@ -6,6 +6,11 @@ from pathlib import Path
 
 from graph_engineering.models import VerifierResult
 from graph_engineering.models.graph import Node
+from graph_engineering.observability import (
+    NoOpTelemetryProvider,
+    TelemetryIdentity,
+    TelemetryProvider,
+)
 
 from .lifecycle import VerifierRepository
 from .types import VerifierProtocol, VerifierRequest
@@ -19,14 +24,40 @@ class RuntimeVerifierAdapter:
         *,
         working_directory: Path,
         artifact_directory: Path,
+        telemetry: TelemetryProvider | None = None,
     ) -> None:
         self.repository = repository
         self.implementations = dict(implementations)
         self.working_directory = working_directory
         self.artifact_directory = artifact_directory
+        self.telemetry = telemetry or NoOpTelemetryProvider()
         self._handles: dict[str, tuple[str, int]] = {}
 
     def execute(
+        self,
+        run_id: str,
+        node: Node,
+        attempt_id: str,
+        *,
+        idempotency_key: str | None = None,
+    ) -> VerifierResult:
+        verifier_id = str(node.config.get("verifier_id", node.node_id))
+        with self.telemetry.span(
+            "ge.verifier.execution",
+            TelemetryIdentity(
+                run_id=run_id,
+                node_id=node.node_id,
+                attempt_id=attempt_id,
+                verifier_id=verifier_id,
+                external_effect_id=idempotency_key,
+            ),
+            {"ge.component": "verifier", "ge.operation": "execute"},
+        ) as span:
+            result = self._execute(run_id, node, attempt_id, idempotency_key=idempotency_key)
+            span.set_result(result.status.value)
+            return result
+
+    def _execute(
         self,
         run_id: str,
         node: Node,

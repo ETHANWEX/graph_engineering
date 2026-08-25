@@ -86,6 +86,30 @@ class StateStore:
                     "INSERT INTO schema_migrations(version, applied_at) VALUES (6, ?)",
                     (timestamp(),),
                 )
+            if 7 not in applied:
+                connection.executescript(_MIGRATION_7)
+                connection.execute(
+                    "INSERT INTO schema_migrations(version, applied_at) VALUES (7, ?)",
+                    (timestamp(),),
+                )
+            if 8 not in applied:
+                connection.executescript(_MIGRATION_8)
+                connection.execute(
+                    "INSERT INTO schema_migrations(version, applied_at) VALUES (8, ?)",
+                    (timestamp(),),
+                )
+            if 9 not in applied:
+                connection.executescript(_MIGRATION_9)
+                connection.execute(
+                    "INSERT INTO schema_migrations(version, applied_at) VALUES (9, ?)",
+                    (timestamp(),),
+                )
+            if 10 not in applied:
+                connection.executescript(_MIGRATION_10)
+                connection.execute(
+                    "INSERT INTO schema_migrations(version, applied_at) VALUES (10, ?)",
+                    (timestamp(),),
+                )
             connection.commit()
 
     @property
@@ -114,7 +138,31 @@ class StateStore:
 
     @property
     def delivery_migration_version(self) -> int:
-        """Actual storage head including Phase 5 delivery tables."""
+        """Compatibility level through Phase 5; use service_migration_version for head."""
+
+        return min(self.service_migration_version, 6)
+
+    @property
+    def service_migration_version(self) -> int:
+        """Compatibility level through Phase 6A; use parallel_migration_version for head."""
+
+        return min(self.parallel_migration_version, 7)
+
+    @property
+    def parallel_migration_version(self) -> int:
+        """Compatibility level through Phase 6B; use container_migration_version for head."""
+
+        return min(self.container_migration_version, 8)
+
+    @property
+    def container_migration_version(self) -> int:
+        """Compatibility level through Phase 6C; use autonomous delivery head for storage."""
+
+        return min(self.autonomous_delivery_migration_version, 9)
+
+    @property
+    def autonomous_delivery_migration_version(self) -> int:
+        """Actual storage head including Phase 6D durable delivery coordination."""
 
         with self.read_connection() as connection:
             row = connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()
@@ -665,5 +713,156 @@ CREATE TABLE human_acceptance_records (
     new_contract_revision INTEGER,
     new_run_id TEXT,
     created_at TEXT NOT NULL
+);
+"""
+
+_MIGRATION_7 = """
+ALTER TABLE pending_confirmations ADD COLUMN actor_id TEXT;
+ALTER TABLE pending_confirmations ADD COLUMN project_id TEXT;
+ALTER TABLE pending_confirmations ADD COLUMN protocol_major INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE pending_confirmations ADD COLUMN expires_at TEXT;
+
+CREATE TABLE ipc_mutation_replays (
+    idempotency_key TEXT PRIMARY KEY,
+    request_fingerprint TEXT NOT NULL,
+    project_id TEXT NOT NULL,
+    workspace_id TEXT NOT NULL,
+    operation TEXT NOT NULL,
+    response_json TEXT,
+    state TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    completed_at TEXT
+);
+"""
+
+_MIGRATION_8 = """
+CREATE TABLE parallel_branches (
+    run_id TEXT NOT NULL REFERENCES runs(run_id),
+    container_node_id TEXT NOT NULL,
+    branch_id TEXT NOT NULL,
+    branch_order INTEGER NOT NULL,
+    subgraph_json TEXT NOT NULL,
+    subgraph_hash TEXT NOT NULL,
+    status TEXT NOT NULL,
+    current_node_id TEXT,
+    result_json TEXT,
+    started_at TEXT,
+    finished_at TEXT,
+    PRIMARY KEY(run_id, container_node_id, branch_id)
+);
+CREATE INDEX parallel_branches_schedulable
+ON parallel_branches(run_id, container_node_id, status, branch_order);
+
+CREATE TABLE parallel_branch_nodes (
+    run_id TEXT NOT NULL,
+    container_node_id TEXT NOT NULL,
+    branch_id TEXT NOT NULL,
+    node_id TEXT NOT NULL,
+    node_type TEXT NOT NULL,
+    status TEXT NOT NULL,
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    result_json TEXT,
+    route_resolved INTEGER NOT NULL DEFAULT 0,
+    first_started_at TEXT,
+    cost_units REAL NOT NULL DEFAULT 0,
+    repair_iterations INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY(run_id, container_node_id, branch_id, node_id),
+    FOREIGN KEY(run_id, container_node_id, branch_id)
+      REFERENCES parallel_branches(run_id, container_node_id, branch_id)
+);
+
+CREATE TABLE parallel_branch_attempts (
+    attempt_id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL,
+    container_node_id TEXT NOT NULL,
+    branch_id TEXT NOT NULL,
+    node_id TEXT NOT NULL,
+    attempt_number INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    result_json TEXT,
+    started_at TEXT NOT NULL,
+    finished_at TEXT,
+    UNIQUE(run_id, container_node_id, branch_id, node_id, attempt_number),
+    FOREIGN KEY(run_id, container_node_id, branch_id, node_id)
+      REFERENCES parallel_branch_nodes(run_id, container_node_id, branch_id, node_id)
+);
+
+CREATE TABLE parallel_branch_edge_traversals (
+    run_id TEXT NOT NULL,
+    container_node_id TEXT NOT NULL,
+    branch_id TEXT NOT NULL,
+    from_node TEXT NOT NULL,
+    to_node TEXT NOT NULL,
+    traversal_count INTEGER NOT NULL,
+    PRIMARY KEY(run_id, container_node_id, branch_id, from_node, to_node),
+    FOREIGN KEY(run_id, container_node_id, branch_id)
+      REFERENCES parallel_branches(run_id, container_node_id, branch_id)
+);
+
+CREATE TABLE shared_budget_reservations (
+    run_id TEXT NOT NULL REFERENCES runs(run_id),
+    reservation_id TEXT NOT NULL,
+    node_id TEXT,
+    cost_units REAL NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY(run_id, reservation_id)
+);
+"""
+
+_MIGRATION_9 = """
+CREATE TABLE container_executions (
+    execution_id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL,
+    node_id TEXT NOT NULL,
+    attempt_id TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL UNIQUE,
+    owner_id TEXT NOT NULL UNIQUE,
+    state TEXT NOT NULL,
+    handle TEXT UNIQUE,
+    image_digest TEXT NOT NULL,
+    config_fingerprint TEXT NOT NULL,
+    stdout_bytes INTEGER NOT NULL DEFAULT 0,
+    stderr_bytes INTEGER NOT NULL DEFAULT 0,
+    artifact_bytes INTEGER NOT NULL DEFAULT 0,
+    result_json TEXT,
+    cleanup_state TEXT NOT NULL,
+    residual_effect TEXT,
+    started_at TEXT,
+    deadline_at TEXT,
+    finished_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX container_executions_run_state
+ON container_executions(run_id, state, node_id);
+"""
+
+_MIGRATION_10 = """
+CREATE TABLE run_start_requests (
+    idempotency_key TEXT PRIMARY KEY,
+    request_id TEXT NOT NULL,
+    run_id TEXT NOT NULL,
+    request_fingerprint TEXT NOT NULL,
+    state TEXT NOT NULL,
+    result_json TEXT,
+    error_code TEXT,
+    created_at TEXT NOT NULL,
+    completed_at TEXT
+);
+CREATE INDEX run_start_requests_run_state ON run_start_requests(run_id, state);
+
+CREATE TABLE delivery_stage_checkpoints (
+    run_id TEXT NOT NULL,
+    stage TEXT NOT NULL,
+    attempt_identity TEXT NOT NULL,
+    status TEXT NOT NULL,
+    classification TEXT,
+    artifact_refs_json TEXT NOT NULL DEFAULT '[]',
+    external_effect_key TEXT,
+    external_handle TEXT,
+    result_json TEXT,
+    created_at TEXT NOT NULL,
+    completed_at TEXT,
+    PRIMARY KEY(run_id, stage, attempt_identity)
 );
 """

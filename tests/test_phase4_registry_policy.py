@@ -39,6 +39,7 @@ def test_registry_registers_builtins_and_rejects_duplicates_and_unknowns() -> No
     assert builtin_registry().types() == (
         "builtin/command",
         "builtin/http-pipeline",
+        "project/container",
         "project/subprocess",
     )
     registry = VerifierRegistry()

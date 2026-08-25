@@ -1,0 +1,13 @@
+{
+  "jsonrpc": "2.0",
+  "id": "fixture-call-1",
+  "method": "tools/call",
+  "params": {
+    "name": "start",
+    "arguments": {
+      "project_id": "project",
+      "actor_id": "human",
+      "conversation_id": "project-main"
+    }
+  }
+}

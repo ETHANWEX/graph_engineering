@@ -18,7 +18,16 @@ from .control import (
     QueryControlIntent,
     StateChangeControlIntent,
 )
-from .graph import Edge, ExecutionGraph, Node, RouteCondition
+from .graph import (
+    Edge,
+    ExecutionGraph,
+    JoinSpec,
+    Node,
+    ParallelBranch,
+    ParallelSpec,
+    RouteCondition,
+    Subgraph,
+)
 from .reports import (
     BudgetUsage,
     ExternalEffect,
@@ -26,11 +35,12 @@ from .reports import (
     LiveReport,
     UnverifiedItem,
 )
-from .results import ExecutorResult, VerifierResult
+from .results import BranchResult, ExecutorResult, ParallelResult, VerifierResult
 
 __all__ = [
     "AcceptanceCriterion",
     "Artifact",
+    "BranchResult",
     "Budget",
     "BudgetUsage",
     "ContractPolicy",
@@ -47,13 +57,18 @@ __all__ = [
     "FinalReport",
     "HumanControlPolicy",
     "HumanMessage",
+    "JoinSpec",
     "LiveReport",
     "Node",
+    "ParallelBranch",
+    "ParallelResult",
+    "ParallelSpec",
     "QueryControlIntent",
     "RestartFrom",
     "RouteCondition",
     "RunRelationship",
     "StateChangeControlIntent",
+    "Subgraph",
     "TaskContract",
     "TaskDefinition",
     "UnverifiedItem",

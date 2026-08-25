@@ -4,12 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "graph-engineering"
-version = "0.6.0"
-description = "Provider-neutral graph runtime with review and versioned delivery"
+version = "0.8.0"
+description = "Provider-neutral graph runtime with local service, MCP, and versioned delivery"
 readme = "README.md"
-requires-python = ">=3.12"
-license = { text = "Apache-2.0" }
+requires-python = ">=3.12,<3.14"
+license = "Apache-2.0"
 authors = [{ name = "Graph Engineering contributors" }]
+classifiers = [
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
 dependencies = [
   "pydantic>=2.10,<3",
   "PyYAML>=6.0.2,<7",
@@ -32,8 +36,11 @@ ge = "graph_engineering.cli:app"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"graph_engineering.ui.assets" = ["*.css", "*.js"]
+
 [tool.pytest.ini_options]
-addopts = "--strict-config --strict-markers -p no:cacheprovider --basetemp=.pytest-tmp"
+addopts = "--strict-config --strict-markers -p no:cacheprovider"
 testpaths = ["tests"]
 markers = ["real_codex: explicitly enabled real Codex CLI acceptance test"]
 
@@ -45,7 +52,7 @@ packages = ["graph_engineering"]
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-exclude = [".git", ".venv"]
+extend-exclude = [".local", ".pytest-*"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]

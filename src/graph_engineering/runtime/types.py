@@ -17,6 +17,7 @@ class RunSnapshot:
     node_states: tuple[tuple[str, str, int], ...]
     started_node_ids: tuple[str, ...]
     edge_traversals: tuple[tuple[str, str, int], ...]
+    branch_states: tuple[tuple[str, str, str, str | None], ...]
     budget: Budget
     budget_usage: BudgetUsage
     relationship: RunRelationship
@@ -32,6 +33,7 @@ class RunSnapshot:
             self.node_states,
             self.started_node_ids,
             self.edge_traversals,
+            self.branch_states,
             self.budget_usage.executor_calls,
             self.budget_usage.repair_iterations,
             self.budget_usage.cost_units,

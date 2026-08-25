@@ -14,6 +14,11 @@ from collections.abc import Callable, Mapping
 from enum import StrEnum
 from typing import Any
 
+from graph_engineering.observability import (
+    NoOpTelemetryProvider,
+    TelemetryIdentity,
+    TelemetryProvider,
+)
 from graph_engineering.runtime.store import StateStore, timestamp
 from graph_engineering.verifier.http_pipeline import HttpResponse, HttpTransport
 
@@ -181,14 +186,26 @@ class GitHubChecksProvider:
         token: str | None = None,
         allowed_hosts: tuple[str, ...] = ("api.github.com",),
         sleep: Callable[[float], None] = time.sleep,
+        telemetry: TelemetryProvider | None = None,
     ) -> None:
         self.repository = repository
         self.client = _GitHubClient(
             repository, transport=transport, token=token, allowed_hosts=allowed_hosts
         )
         self.sleep = sleep
+        self.telemetry = telemetry or NoOpTelemetryProvider()
 
     def status(self, commit_sha: str) -> GitHubChecksStatus:
+        with self.telemetry.span(
+            "ge.github.operation",
+            TelemetryIdentity(repository_id=_repository_identity(self.repository)),
+            {"ge.component": "github", "ge.operation": "checks_status"},
+        ) as span:
+            result = self._status(commit_sha)
+            span.set_result("complete" if result.complete else "pending")
+            return result
+
+    def _status(self, commit_sha: str) -> GitHubChecksStatus:
         encoded = urllib.parse.quote(commit_sha, safe="")
         _, payload = self.client.request(
             "GET",
@@ -349,6 +366,7 @@ class PullRequestManager:
         token: str | None = None,
         allowed_hosts: tuple[str, ...] = ("api.github.com",),
         can_write: Callable[[], bool],
+        telemetry: TelemetryProvider | None = None,
     ) -> None:
         self.state = state
         state.migrate()
@@ -357,8 +375,24 @@ class PullRequestManager:
             repository, transport=transport, token=token, allowed_hosts=allowed_hosts
         )
         self.can_write = can_write
+        self.telemetry = telemetry or NoOpTelemetryProvider()
 
     def ensure(self, spec: PullRequestSpec) -> PullRequestHandle:
+        key = self._key(spec)
+        with self.telemetry.span(
+            "ge.github.operation",
+            TelemetryIdentity(
+                repository_id=_repository_identity(self.repository),
+                run_id=spec.run_id,
+                external_effect_id=key,
+            ),
+            {"ge.component": "github", "ge.operation": "pr_ensure"},
+        ) as span:
+            result = self._ensure(spec)
+            span.set_result("succeeded")
+            return result
+
+    def _ensure(self, spec: PullRequestSpec) -> PullRequestHandle:
         key = self._key(spec)
         existing = self._handle(key)
         if existing is not None:
@@ -439,6 +473,22 @@ class PullRequestManager:
         return self._checkpoint(key, spec, created)
 
     def update(
+        self, handle: PullRequestHandle, *, title: str, body: str, draft: bool
+    ) -> PullRequestHandle:
+        with self.telemetry.span(
+            "ge.github.operation",
+            TelemetryIdentity(
+                repository_id=_repository_identity(self.repository),
+                run_id=handle.run_id,
+                provider_handle=str(handle.number),
+            ),
+            {"ge.component": "github", "ge.operation": "pr_update"},
+        ) as span:
+            result = self._update(handle, title=title, body=body, draft=draft)
+            span.set_result("succeeded")
+            return result
+
+    def _update(
         self, handle: PullRequestHandle, *, title: str, body: str, draft: bool
     ) -> PullRequestHandle:
         persisted = self._handle(
@@ -582,3 +632,7 @@ class PullRequestManager:
             url=str(row["pr_url"]),
             node_id=str(row["node_id"]),
         )
+
+
+def _repository_identity(repository: GitHubRepository) -> str:
+    return hashlib.sha256(repository.full_name.encode("utf-8")).hexdigest()
