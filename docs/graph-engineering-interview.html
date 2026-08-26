@@ -1,0 +1,1772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Graph Engineering 0.8.0 自治 AI Coding 控制层 - 面试学习手册</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #f8f9fc; --surface: #ffffff; --surface2: #eef1f6;
+  --text: #2d3748; --text-dim: #718096; --accent: #4361ee;
+  --green: #10b981; --orange: #f59e0b; --red: #ef4444;
+  --purple: #8b5cf6; --cyan: #06b6d4; --yellow: #d97706;
+  --border: #e2e8f0; --shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; min-height: 100vh; }
+.container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+h1 { text-align: center; color: var(--accent); margin: 24px 0 4px; font-size: 1.6em; }
+.subtitle { text-align: center; color: var(--text-dim); margin-bottom: 32px; font-size: 0.9em; }
+
+.tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin-bottom: 32px; flex-wrap: wrap; }
+.tab { padding: 10px 18px; cursor: pointer; border-radius: 8px 8px 0 0; background: var(--surface2); color: var(--text-dim); transition: all 0.2s; font-size: 0.88em; font-weight: 500; }
+.tab:hover { color: var(--text); background: #dde3ed; }
+.tab.active { color: var(--accent); background: var(--surface); border-bottom: 3px solid var(--accent); margin-bottom: -2px; font-weight: 600; }
+.tab-content { display: none; animation: fadeIn 0.3s; }
+.tab-content.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.card { background: var(--surface); border-radius: 12px; padding: 28px; margin-bottom: 24px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+.card h2 { color: var(--accent); margin-bottom: 16px; font-size: 1.2em; border-left: 4px solid var(--accent); padding-left: 12px; }
+.card h3 { color: var(--green); margin: 20px 0 10px; font-size: 1em; }
+.card h4 { color: var(--purple); margin: 16px 0 8px; font-size: 0.92em; }
+.card p { font-size: 0.9em; margin: 6px 0; }
+.card ul, .card ol { padding-left: 24px; font-size: 0.9em; }
+.card li { margin: 6px 0; }
+
+.code { background: #1e293b; color: #e2e8f0; border-radius: 8px; padding: 16px; font-size: 0.78em; overflow-x: auto; margin: 12px 0; white-space: pre; font-family: 'SF Mono', 'Fira Code', monospace; line-height: 1.6; }
+.code .cm { color: #94a3b8; }
+.code .kw { color: #7dd3fc; }
+.code .str { color: #86efac; }
+.code .tp { color: #c4b5fd; }
+
+.formula { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 14px 20px; text-align: center; margin: 14px 0; font-size: 1em; color: #92400e; font-weight: 600; }
+
+.data-table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 0.85em; }
+.data-table th { background: var(--surface2); color: var(--accent); padding: 10px 12px; text-align: left; font-weight: 600; }
+.data-table td { padding: 10px 12px; border-top: 1px solid var(--border); vertical-align: top; }
+.data-table tr:hover { background: #f1f5f9; }
+
+.collapse-header { cursor: pointer; padding: 14px 18px; background: var(--surface2); border-radius: 8px; margin: 10px 0; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; }
+.collapse-header:hover { background: #dde3ed; }
+.collapse-header .icon { transition: transform 0.2s; font-size: 0.8em; }
+.collapse-header.open .icon { transform: rotate(90deg); }
+.collapse-body { display: none; padding: 20px; border-left: 3px solid var(--accent); margin: 0 0 0 16px; background: #f8faff; border-radius: 0 8px 8px 0; }
+.collapse-body.open { display: block; }
+
+.step-box { background: #f0f4ff; border-radius: 8px; padding: 16px 20px; margin: 12px 0; border-left: 4px solid var(--accent); font-size: 0.9em; }
+.step-box.green { background: #f0fdf4; border-left-color: var(--green); }
+.step-box.orange { background: #fffbeb; border-left-color: var(--orange); }
+.step-box.purple { background: #faf5ff; border-left-color: var(--purple); }
+.step-box.red { background: #fef2f2; border-left-color: var(--red); }
+.step-box.cyan { background: #ecfeff; border-left-color: var(--cyan); }
+
+.hl { color: var(--accent); font-weight: 600; }
+.hl-green { color: var(--green); font-weight: 600; }
+.hl-red { color: var(--red); font-weight: 600; }
+.hl-orange { color: var(--orange); font-weight: 600; }
+.hl-purple { color: var(--purple); font-weight: 600; }
+
+/* 三层递进 */
+.three-layer { display: flex; gap: 12px; align-items: stretch; margin: 16px 0; flex-wrap: wrap; }
+.layer-card { flex: 1; min-width: 200px; border: 2px solid var(--border); border-radius: 10px; padding: 18px; background: var(--surface); position: relative; }
+.layer-card.harness { border-color: var(--cyan); }
+.layer-card.loop { border-color: var(--purple); }
+.layer-card.graph { border-color: var(--accent); }
+.layer-card h4 { color: var(--accent); margin-bottom: 8px; font-size: 1em; text-align: center; }
+.layer-card.harness h4 { color: var(--cyan); }
+.layer-card.loop h4 { color: var(--purple); }
+.layer-card .layer-tag { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--surface); padding: 0 10px; font-size: 0.75em; color: var(--text-dim); }
+.layer-arrow { display: flex; align-items: center; color: var(--text-dim); font-size: 1.4em; font-weight: 700; }
+
+/* 完整讲义样式 */
+.lecture-content { font-size: 0.88em; line-height: 1.9; }
+.lecture-content h1 { color: var(--accent); font-size: 1.4em; margin: 32px 0 12px; border-bottom: 2px solid var(--border); padding-bottom: 8px; }
+.lecture-content h2 { color: var(--accent); font-size: 1.15em; margin: 28px 0 12px; border-left: 4px solid var(--accent); padding-left: 12px; }
+.lecture-content h3 { color: var(--green); font-size: 1em; margin: 20px 0 8px; }
+.lecture-content h4 { color: var(--purple); font-size: 0.92em; margin: 16px 0 6px; }
+.lecture-content p { margin: 8px 0; }
+.lecture-content ul, .lecture-content ol { padding-left: 24px; margin: 8px 0; }
+.lecture-content li { margin: 4px 0; }
+.lecture-content code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-family: 'SF Mono','Fira Code',monospace; font-size: 0.9em; color: #e11d48; }
+.lecture-content pre { background: #1e293b; color: #e2e8f0; border-radius: 8px; padding: 16px; margin: 12px 0; overflow-x: auto; font-family: 'SF Mono','Fira Code',monospace; font-size: 0.82em; line-height: 1.6; white-space: pre-wrap; }
+.lecture-content pre code { background: none; color: inherit; padding: 0; }
+.lecture-content table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.9em; }
+.lecture-content th { background: var(--surface2); color: var(--accent); padding: 8px 12px; text-align: left; font-weight: 600; }
+.lecture-content td { padding: 8px 12px; border-top: 1px solid var(--border); vertical-align: top; }
+.lecture-content blockquote { border-left: 4px solid var(--accent); padding: 8px 16px; margin: 12px 0; background: #f0f4ff; border-radius: 0 8px 8px 0; }
+.lecture-content hr { border: none; border-top: 2px dashed var(--border); margin: 28px 0; }
+.lecture-content strong { color: var(--text); }
+.section-divider { border: none; border-top: 2px dashed var(--border); margin: 28px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Graph Engineering 自治 AI Coding 控制层</h1>
+<p class="subtitle">面试学习手册 | 0.8.0 / Phase 6G / 2026-08-26 | Python 3.12–3.13 + SQLite + Pydantic</p>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab(0)">项目概览</div>
+  <div class="tab" onclick="switchTab(1)">核心思想</div>
+  <div class="tab" onclick="switchTab(2)">架构与模块</div>
+  <div class="tab" onclick="switchTab(3)">一次需求全流程</div>
+  <div class="tab" onclick="switchTab(4)">完整讲义</div>
+  <div class="tab" onclick="switchTab(5)">面试 Q&amp;A</div>
+  <div class="tab" onclick="switchTab(6)">现状与路线</div>
+</div>
+
+<!-- ==================== Tab 0: 项目概览 ==================== -->
+<div class="tab-content active" id="tab0">
+
+<div class="card">
+<h2>一句话定位</h2>
+<div class="formula">不是造 Agent，而是造 Agent 之上的「控制层」——把「需要模型推理的事」和「必须确定可靠的事」彻底分开。</div>
+<p>Graph Engineering 是一个<b>面向自治软件开发的图工程控制层</b>：Human 用自然语言说清楚「要做什么、怎么验收、边界在哪」，剩下的「探索、方案设计、编码、测试、独立审查、证据交付」由<b>确定性 Graph Runtime</b> 编排多个<b>受限 Agent</b> 自动完成；Human 随时能无干扰地看进度、打断、改方向，最后自己拍板要不要合入。</p>
+<div class="step-box green">
+<p><strong>一句话区分度：</strong>别的工具帮你「写代码」，Graph Engineering 帮你「管住写代码的一整条流水线，并且每一步都可恢复、可审计、可叫停」。</p>
+</div>
+</div>
+
+<div class="card">
+<h2>背景动机：传统 Coding Agent 为什么在长任务上失控</h2>
+<p>传统 Coding Agent 通常围绕<b>一次长会话</b>工作。复杂任务容易遇到五类失控（这正是本项目要解决的问题）：</p>
+<table class="data-table">
+<tr><th>失控点</th><th>表现</th><th>本项目的对策</th></tr>
+<tr><td>需求只在聊天记录里</td><td>上下文 compact 后需求、验收条件丢失</td><td>需求落库为冻结的 <code>TaskContract</code>，append-only</td></tr>
+<tr><td>Agent 自测自审</td><td>既当运动员又当裁判，可能改测试让错误实现通过</td><td>Implementer / Verifier / Reviewer 职责隔离 + 只读 Session</td></tr>
+<tr><td>中断/恢复不可靠</td><td>失败后分不清「重试/修代码/重跑基础设施/终止」</td><td>持久化 checkpoint + 幂等键 + 失败语义分类</td></tr>
+<tr><td>查询污染执行</td><td>Human 查进度会打断/污染正在跑的 Agent</td><td>独立只读 Observer，指纹校验非干扰</td></tr>
+<tr><td>换 CLI 状态即失</td><td>任务状态绑定某个工具会话，迁移即丢</td><td>权威状态只在 SQLite，入口都是薄的</td></tr>
+</table>
+<div class="step-box">
+<p><strong>本质洞察（项目灵魂）：</strong>模型上下文是临时缓存，不是数据库。传统 Agent 把「推理」和「控制」混在同一个聊天会话里——需求在聊天里、状态在模型上下文里、验收标准可能被 Agent 自己改。本项目把这两类事分开，让「推理走模型、控制走确定性代码」。</p>
+</div>
+</div>
+
+<div class="card">
+<h2>Harness → Loop → Graph：项目在业界概念中的定位</h2>
+<p>这是 2026 年 AI Coding 领域最火的递进框架（Peter Steinberger「Stop prompting coding agents — design loops that prompt them」；随后转向 Graph），本项目的设计理念与之对应：</p>
+<div class="three-layer">
+  <div class="layer-card harness">
+    <div class="layer-tag">Layer 1</div>
+    <h4>Harness Engineering</h4>
+    <p>保证<b>单个 Agent 节点</b>拥有正确的工具、权限、上下文。</p>
+    <p style="color:var(--text-dim);font-size:0.8em">对应本项目：为每个角色构建独立 Harness，限制工具与权限（workspace-write / read-only 沙箱）。</p>
+  </div>
+  <div class="layer-arrow">&#9660;</div>
+  <div class="layer-card loop">
+    <div class="layer-tag">Layer 2</div>
+    <h4>Loop Engineering</h4>
+    <p>用<b>测试、审查、失败反馈</b>让单个任务局部收敛。</p>
+    <p style="color:var(--text-dim);font-size:0.8em">对应本项目：测试失败→自动修复、审查失败→修改重验、异常→重试/终止。</p>
+  </div>
+  <div class="layer-arrow">&#9660;</div>
+  <div class="layer-card graph">
+    <div class="layer-tag">Layer 3</div>
+    <h4>Graph Engineering</h4>
+    <p>把<b>多个 Agent、确定性工具、反馈循环、外部系统、人工边界</b>组织成可组合、可恢复、可审计的执行图。</p>
+    <p style="color:var(--text-dim);font-size:0.8em">对应本项目：持久化执行图 + 条件路由 + Human-in-the-loop。</p>
+  </div>
+</div>
+<div class="step-box purple">
+<p><strong>关键理解（面试加分点）：</strong>三层是<b>递进吸收</b>而非替代——Loop 没有死，它「退」成了 Graph 每个节点内部的运行机制；Graph 也没有取代 Harness，任何一层都仍需要 Harness 打底。项目同时覆盖三层：Harness（职责隔离的沙箱）、Loop（反馈闭环）、Graph（持久化执行图编排）。</p>
+</div>
+</div>
+
+<div class="card">
+<h2>端到端流程（一次需求的生命周期）</h2>
+<div class="code"><span class="cm"># 一条主数据流贯穿始终：</span>
+自然语言需求
+  └─ 落库为不可变 HumanMessage
+       └─ IntentCompiler 编译成强类型 ControlIntent（fail-closed）
+            └─ Discovery 需求探索（确定性预扫 + 当前固定 7 类必答项）
+                 └─ 生成 Contract 草稿 → Human confirm → 冻结（append-only + acceptance_lock）
+                      └─ Compiler 生成标准串行图（并行图模型/Runtime 已有，但不会自动选拓扑）
+                           └─ RunPlanner 准备 Run（prepared，不等于执行）
+                                └─ ge run 显式启动 → GraphRuntime 跑图（当前产品入口仅 deterministic fixture）
+                                     └─ implement → verify →(failed) repair ↺
+                                          → review →(changes) review_fix → fresh review
+                                          → deliver
+                                     └─ 十文件交付包 + 终态报告
+                                          └─ Human accept / reject / revise（默认不自动合并）</div>
+<p>贯穿全程的两条暗线（任何时候都能用来理解任意一处代码）：</p>
+<ol>
+<li><b>这一步是「推理」还是「控制」？</b> 推理走模型（Codex），控制走确定性代码（纯 Python 状态机 + SQLite）。</li>
+<li><b>这一步会不会破坏某个 append-only / 只读 / 幂等不变量？</b> 会，就一定有对应机制防住。</li>
+</ol>
+</div>
+
+<div class="card">
+<h2>简历四条能力 ↔ 系统模块映射</h2>
+<p>面试官一定会就简历的每句话追问。下面是每句描述对应的系统落点：</p>
+<table class="data-table">
+<tr><th style="width:40%">简历描述</th><th>系统落点（对应模块）</th></tr>
+<tr><td>「将一次需求实现拆分为需求探索、方案设计、编码实现、测试验证、独立审查和成果交付」</td><td>Discovery（探索）/ Compiler（标准方案）/ Implementer（编码）/ Verifier（验证）/ Reviewer（审查）/ Delivery（交付）；真实 Implementer 的产品接线仍是缺口</td></tr>
+<tr><td>「通过持久化执行图驱动各阶段自动流转」</td><td>GraphRuntime 状态机 + 条件路由，图持久化到 SQLite，节点状态可恢复</td></tr>
+<tr><td>「Discovery/Designer 分析仓库并生成需求契约与实施方案」</td><td>当前 Discovery 是确定性预扫 + 固定七问，Compiler 输出标准串行图；动态 missing_information 和复杂度模板属于下一步，面试时不能说成已完成</td></tr>
+<tr><td>「Implementer 编码，Verifier 执行确定性测试，Reviewer 只读审查，Observer 独立反馈」</td><td>Executor 角色抽象 + Verifier 三类确定性验证器 + ReadOnlyRoleRunner 只读隔离 + Observer 指纹校验非干扰</td></tr>
+<tr><td>「为各 Agent 构建独立 Harness，限制工具与权限」</td><td>ExecutorRequest 沙箱策略（workspace-write / read-only）+ 能力 allowlist + secret 只引用不传值</td></tr>
+<tr><td>「交接和验证证据持久化至 SQLite/JSONL」</td><td>StateStore(SQLite) + EventStore(JSONL) + ArtifactStore(内容寻址) 三层存储</td></tr>
+<tr><td>「Checkpoint 与 Git worktree 支持 Session 轮换、中断恢复和环境隔离」</td><td>事务化 checkpoint + 幂等键 + Git worktree 每 Run 独立</td></tr>
+<tr><td>「测试失败→自动修复」「审查失败→修改并重新验证」「基础设施异常→重试或终止」</td><td>failed/error 失败语义分类 + 反馈闭环（见核心思想/模块）</td></tr>
+<tr><td>「Human-in-the-loop，无干扰查询、暂停、中断、方向修订」</td><td>HumanMessage→ControlIntent 编译 + 执行屏障 + Contract 修订 lineage</td></tr>
+<tr><td>「汇总需求、代码、测试及审查证据，由 Human 完成交付验收且默认不自动合并」</td><td>十文件报告 bundle + Requirement Matrix + accept 只写记录（merge_performed=False）</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h2>关键不变量（贯穿全系统的「宪法」）</h2>
+<ul>
+<li><b>权威状态只在 SQLite</b>：入口（CLI/插件/UI）都是薄的，插件和 MCP Session 不含权威 Run 状态，永远不直接写 SQLite 或 worktree。</li>
+<li><b>自然语言只作为 HumanMessage 进入</b>：Runtime 只接受强类型 ControlIntent，杜绝自然语言直接改执行状态。</li>
+<li><b>查询/状态/报告永远只读</b>：只读意图在类型层隔离，不打断执行。</li>
+<li><b>pause/interrupt 先建 barrier 再停</b>：屏障生效后，任何新 Agent/Verifier/子进程/HTTP 调用/GitHub 写都不允许启动。</li>
+<li><b>failed（业务失败）与 error（基础设施异常）始终分开</b>：前者进修复循环，后者重试或终止，不误判。</li>
+<li><b>secret 值永不进 prompt/日志/事件/报告/UI</b>：只引用名称，值在执行时注入环境，且多形态脱敏。</li>
+<li><b>默认永不自动 merge</b>：accept 只写验收记录，merge_performed 硬编码 False，系统没有 merge API。</li>
+<li><b>图是数据，不是代码</b>：路由条件只能用三字段 + 四操作符，杜绝模型通过图注入可执行逻辑。</li>
+</ul>
+</div>
+
+</div>
+
+<!-- ==================== Tab 1: 核心思想 ==================== -->
+<div class="tab-content" id="tab1">
+
+<div class="card">
+<h2>思想一：推理 vs 控制的彻底分离（项目灵魂）</h2>
+<p>整个系统的所有设计决策，都源自同一个判断：</p>
+<div class="formula">「需要模型推理的事」交给 Coding Agent；「必须确定可靠的事」交给确定性 Runtime。</div>
+<table class="data-table">
+<tr><th>类别</th><th>内容</th><th>交给谁</th></tr>
+<tr><td><b>推理</b></td><td>看懂需求、写代码、读 diff 审查</td><td>Coding Agent（Codex）</td></tr>
+<tr><td><b>控制</b></td><td>状态流转、失败分类、预算、中断、恢复、证据、交付</td><td>确定性 Runtime（纯 Python 状态机 + SQLite，<b>不含任何模型调用</b>）</td></tr>
+</table>
+<p>为什么要这样分？因为传统 Coding Agent 的失控，本质是<b>把这两类事混在同一个聊天会话里</b>。需求在聊天记录里、状态在模型上下文里、验收标准可能被 Agent 自己改、中断不可靠、换 CLI 状态就丢。</p>
+<div class="step-box green">
+<p><strong>五类事实源，各司其职（不可互相替代）：</strong></p>
+<ul>
+<li><b>需求事实</b> = <code>TaskContract</code>（冻结后 append-only，禁止替换）</li>
+<li><b>状态事实</b> = SQLite（权威，跨进程可恢复）</li>
+<li><b>事件事实</b> = JSONL（追加式，事务 outbox 保证不丢不重）</li>
+<li><b>证据事实</b> = <code>ArtifactStore</code>（内容寻址 sha256，不可篡改）</li>
+<li><b>代码事实</b> = Git worktree（每 Run 独立 branch）</li>
+</ul>
+<p>这五类事实源各司其职、互不替代，是「权威状态在持久层、不在内存」的第一处体现。</p>
+</div>
+</div>
+
+<div class="card">
+<h2>思想二：单向依赖铁律（分层架构为什么长这样）</h2>
+<div class="code"><span class="cm"># 谁依赖谁，永远不反向。核心层不出现 codex 字样，换 Coding CLI 只动 adapter。</span>
+models（协议，最底层，不 import 任何内部模块）
+  ↑
+runtime/store · events · artifacts（持久化三件套）
+  ↑
+runtime/engine（调度大脑）
+  ↑
+compiler / conversation / discovery / contracts / executor / verifier / review / delivery（领域能力）
+  ↑
+adapters（Codex，最外层 provider 专属代码）
+  ↑
+cli.py / service / mcp_server（入口，都是薄的）</div>
+<p><b>铁律：核心层不出现 <code>codex</code> 字样。</b> 这意味着「换 Coding CLI，只动 adapter」——<code>ExecutorProtocol</code> 定义抽象边界，Codex 是第一个实现它的 adapter，未来接 Claude Code 等 provider 只需新增 adapter，核心 Runtime/存储/协议一律不动。</p>
+</div>
+
+<div class="card">
+<h2>思想三：图是数据，不是代码（安全边界）</h2>
+<p>执行图由<b>冻结契约确定性编译</b>而来，图的形状可复现、可校验、可静态分析。最关键的设计是 <code>RouteCondition</code>：</p>
+<div class="code"><span class="cm"># 路由条件只能用三字段 + 四操作符，注释明写 "it is data, never executable source code"</span>
+<span class="tp">RouteField</span>    = result.status | result.retryable | attempt.number
+<span class="tp">RouteOperator</span> = equals | not_equals | in | not_in</div>
+<p>为什么这么「吝啬」？因为<b>图可能由 Designer/模型产出</b>。如果允许任意表达式（任意 Python/Shell），图本身就变成了注入面。用封闭枚举 + 四操作符，就把「方案（图）」锁死在可静态审计的数据形态——模型可以决定「先做 A 还是 B、失败回哪」，但不能塞进一行可执行代码。</p>
+<div class="step-box purple">
+<p><strong>反直觉但有深意：</strong>「图是数据」不是限制能力，而是<a class="hl">把「自由」关进「可审计」的笼子</a>。方案层获得了拓扑自由度（并行、回退、handoff），同时保持可复现、可 hash 校验、可跨语言序列化。</p>
+</div>
+</div>
+
+<div class="card">
+<h2>三个差异化（最能体现「做控制层而非堆 prompt」）</h2>
+
+<h3>差异化 1：契约冻结 + append-only</h3>
+<p>Contract 是「需求事实源」。允许改契约 = 允许 Agent 自我定义需求 = 验收失去意义。所以：</p>
+<ul>
+<li><b>模型层校验</b>：<code>TaskContract</code> 的 validator 强制 append-only（revision 1 不得 supersede、supersedes 必须指向更低 revision）。</li>
+<li><b>仓储层封死</b>：<code>replace_frozen</code> 无论怎样都抛错——用代码宣示「替换契约」这个操作在系统里不存在。</li>
+<li><b>hash 绑定</b>：冻结时生成 <code>acceptance_lock</code>，把 Contract 与 Verifier 的 hash 绑在一起。</li>
+</ul>
+<div class="step-box red">
+<p><strong>最狠的一处代码：</strong><code>replace_frozen</code> 不是「暂未实现」，而是「永远拒绝」。append-only 不是文档写写，而是 API 层面就封死了。</p>
+</div>
+
+<h3>差异化 2：failed 与 error 的失败语义分类</h3>
+<p>全项目最重要的判断：把「代码写错」和「环境抖了」在<b>状态层</b>分开。</p>
+<table class="data-table">
+<tr><th>状态</th><th>含义</th><th>应对</th></tr>
+<tr><td><span class="hl-green">failed</span></td><td>业务/验收未通过（代码写错了）</td><td>进修复循环，值得让 Agent 改</td></tr>
+<tr><td><span class="hl-red">error</span></td><td>执行器/Verifier/基础设施异常（环境抖了）</td><td>重试或终止，<b>不默认改代码</b></td></tr>
+</table>
+<p>为什么这是命门？因为如果 CI 网络抖动被判成「代码失败」，就会让 Implementer 去改一轮<b>本来正确</b>的代码，甚至引入新 bug。这条线贯穿一切：<code>ExecutorResult</code>/<code>VerifierResult</code> 的模型验证器强制 failed 和 error 不能混淆。</p>
+
+<h3>差异化 3：Human 正交控制面</h3>
+<p>Human 的查询、暂停、中断、修订，走一条<b>与执行正交</b>的通道：自然语言 → HumanMessage → ControlIntent → Runtime。查询走独立只读 Observer，不进入 Implementer/Reviewer/Verifier 的 Session，前后用 <code>fingerprint()</code> 校验「主 Run 状态没被污染」。</p>
+</div>
+
+<div class="card">
+<h2>三句话总结设计哲学</h2>
+<ul>
+<li><b>可恢复</b>：事务化 checkpoint + 幂等键 + 不确定副作用「披露而非重试」。</li>
+<li><b>可审计</b>：五类事实源各司其职，证据内容寻址，契约 append-only，图是数据。</li>
+<li><b>可叫停</b>：pause/interrupt 先建 barrier 再停，任何新副作用都不允许在屏障后启动。</li>
+</ul>
+<div class="formula">「自然语言先落库 → 确定性编译成意图 → 探索出契约 → 冻结 → 编译出图 → 状态机跑图 → 编译出证据链 → 人拍板，永不自动合并。」</div>
+</div>
+
+</div>
+
+<!-- ==================== Tab 2: 架构与模块 ==================== -->
+<div class="tab-content" id="tab2">
+
+<div class="card">
+<h2>代码地图（速查入口）</h2>
+<div class="code"><span class="cm"># src/graph_engineering/ 目录结构（按依赖自下而上）</span>
+├── models/           协议层（36 个 Pydantic 模型 → JSON Schema）
+│   ├── common.py     ProtocolModel.canonical_json/sha256、Artifact、Budget、Error
+│   ├── contract.py   TaskContract（append-only 校验）
+│   ├── graph.py      ExecutionGraph / Node / Edge / RouteCondition（数据非代码）
+│   ├── control.py    HumanMessage / Query vs StateChange 判别联合
+│   ├── results.py    ExecutorResult / VerifierResult（failed vs error 校验）
+│   └── reports.py    RunStatus / TerminalStatus / FinalReport
+├── runtime/          持久化 + 调度
+│   ├── store.py      SQLite StateStore（migration + 事务 outbox）
+│   ├── events.py     JSONL EventStore（outbox 去重 + fsync）
+│   ├── artifacts.py  ArtifactStore（内容寻址 sha256）
+│   ├── engine.py     GraphRuntime（状态机/路由/屏障/预算/checkpoint）
+│   ├── parallel.py   并行节点 / subgraph / join
+│   ├── barriers.py / frozen.py / sessions.py
+├── compiler/         确定性编译：冻结 Contract → 标准串行执行图
+├── conversation/     意图编译（规则匹配，fail-closed）
+├── discovery/        预扫 + 固定七类澄清 + Contract 草稿
+├── contracts/        Contract 冻结/修订 + RunPlanner
+├── executor/         Provider 无关协议 + DurableExecutorRuntime + ProcessSupervisor
+├── adapters/         Codex（exec/discovery/review/verifier_generation）
+├── verifier/         Command / HTTP / Subprocess + 能力策略 + secret 脱敏
+├── review/           ReadOnlyRoleRunner + ReviewFixCoordinator
+├── delivery/         多维审查 / requirement matrix / GitHub / 报告 / 验收
+├── workspace/        Git worktree 隔离
+├── service/          Human Gateway + IPC + MCP
+├── observability/    OTel 边界（非权威、secret-safe）
+└── cli.py            ge 命令（start/run/status/pause/resume/interrupt/accept/reject…）</div>
+<p>点击下面每个模块展开「职责 / 关键机制 / 为什么这么设计」。</p>
+</div>
+
+<!-- 模块 1 -->
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>模块 1：协议层 models/ —— 强类型是地基</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>职责：</b>定义整个系统的「协议」，36 个 Pydantic 模型导出为 JSON Schema，是跨语言/CLI 迁移的根基。</p>
+<h4>关键机制</h4>
+<ul>
+<li><code>ProtocolModel</code>（common.py）：提供 <code>canonical_json()</code>（确定性序列化：排序键 + 紧凑分隔 + 排除 None）和 <code>sha256()</code>——这是「冻结证据」和「内容寻址」的根基。</li>
+<li><code>TaskContract</code>（contract.py）：validator 强制 append-only（revision 1 不得 supersede、supersedes.revision 必须更低、验收条件引用的 verifier 必须存在）。</li>
+<li><code>ExecutionGraph / Node / Edge / RouteCondition</code>（graph.py）：RouteCondition 注释「it is data, never executable source code」，只用 result.status / result.retryable / attempt.number 三字段 + equals/not_equals/in/not_in 四操作符。</li>
+<li><code>HumanMessage / QueryControlIntent / StateChangeControlIntent</code>（control.py）：用 <code>intent_kind</code> 判别联合把「只读查询」和「状态变更」在类型层隔离；<code>QueryControlIntent.requires_confirmation</code> 硬编码 <code>Literal[False]</code>。</li>
+<li><code>ExecutorResult / VerifierResult</code>（results.py）：validator 强制 failed 必须有 failure_reason/failure_details、error 必须有 error 对象——<b>从类型上把「失败」和「异常」分开</b>。</li>
+<li><code>RunStatus / TerminalStatus</code>（reports.py）：Run 状态 14 个（draft→awaiting_confirmation→running→pause_requested→quiescing→paused→delivery_ready→succeeded/failed/error/interrupted/cancelled/rejected）；终态 6 个（succeeded/failed/error/interrupted/cancelled/rejected）。<code>FinalReport</code> 强制「终态状态 ↔ 终态原因 ↔ error」一致。</li>
+</ul>
+<div class="code"><span class="cm"># 查询意图的类型级只读：requires_confirmation 硬编码 Literal[False]</span>
+<span class="kw">class</span> QueryControlIntent(ProtocolModel):
+    intent_kind: Literal[<span class="str">"query"</span>]
+    ...
+    requires_confirmation: Literal[<span class="kw">False</span>] = <span class="kw">False</span>
+
+<span class="cm"># 变更意图：restart 必须有 restart_from，action 与字段强一致</span>
+<span class="kw">class</span> StateChangeControlIntent(ProtocolModel):
+    intent_kind: Literal[<span class="str">"state_change"</span>]
+    ...
+    requires_confirmation: <span class="tp">bool</span>
+    @model_validator(mode=<span class="str">"after"</span>)
+    <span class="kw">def</span> action_specific_fields(self):
+        <span class="kw">if</span> self.action <span class="kw">is</span> StateChangeAction.RESTART <span class="kw">and</span> self.restart_from <span class="kw">is</span> None:
+            <span class="kw">raise</span> ValueError(<span class="str">"restart_from is required for restart"</span>)
+        ...</div>
+<div class="step-box green"><p><b>面试价值点：</b>「协议即代码」——36 个 JSON Schema 从模型导出，并有 drift 测试保证协议稳定。「用类型系统把设计不变量物理化」，是最能体现设计成熟度的一句话。</p></div>
+</div></div>
+
+<!-- 模块 2 -->
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>模块 2：持久化 store/events/artifacts —— 状态机 + 事件溯源 + 内容寻址</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>职责：</b>三层存储各司其职，让权威状态跨进程可恢复、事件不丢不重、证据不可篡改。</p>
+<h4>1. SQLite StateStore（store.py）</h4>
+<p>单调 migration（Phase 6 时 head=10，代码用一串 property 层层委派做版本兼容：<code>schema_version → latest_migration_version → storage_migration_version → database_migration_version → delivery_migration_version → service_migration_version → parallel_migration_version → container_migration_version → autonomous_delivery_migration_version</code>，最后一个直接 <code>SELECT MAX(version) FROM schema_migrations</code>）。</p>
+<div class="code"><span class="cm"># 写事务：BEGIN IMMEDIATE 立即锁，异常回滚</span>
+@contextmanager
+<span class="kw">def</span> transaction(self) -&gt; Iterator[sqlite3.Connection]:
+    connection = self._connect()
+    <span class="kw">try</span>:
+        connection.execute(<span class="str">"BEGIN IMMEDIATE"</span>)
+        <span class="kw">yield</span> connection
+        connection.commit()
+    <span class="kw">except</span> BaseException:
+        connection.rollback()
+        <span class="kw">raise</span></div>
+<p><b>事件 outbox（事务性发件箱）</b>：<code>enqueue_event</code> 把事件 JSON 写进 <code>event_outbox</code> 表，与状态变更<b>同一事务</b>——状态和它触发的事件要么一起提交、要么一起回滚。这是「事件不丢不重」的根基。读侧 <code>read_connection()</code> 用 <code>mode=ro</code> 只读连接 + 不写锁，写连接开启 WAL + synchronous=FULL。</p>
+<h4>2. JSONL EventStore（events.py）</h4>
+<div class="code"><span class="kw">def</span> _flush_locked(self, state) -&gt; <span class="tp">int</span>:
+    existing = self._existing_ids()          <span class="cm"># 读已有 event_id 去重</span>
+    delivered = 0
+    <span class="kw">for</span> row <span class="kw">in</span> state.outbox_rows():
+        event_id = str(row[<span class="str">"event_id"</span>])
+        <span class="kw">if</span> event_id <span class="kw">not in</span> existing:
+            <span class="kw">with</span> self.path.open(<span class="str">"a"</span>, ...) <span class="kw">as</span> stream:
+                stream.write(str(row[<span class="str">"event_json"</span>])); stream.write(<span class="str">"\n"</span>)
+                stream.flush(); os.fsync(stream.fileno())
+            existing.add(event_id)
+        state.mark_event_delivered(event_id)   <span class="cm"># 标记已投递</span>
+        delivered += 1
+    <span class="kw">return</span> delivered</div>
+<p>同一事件不会因重复 flush 而重复落盘：先读已有 id 去重，再追加 + fsync。</p>
+<h4>3. ArtifactStore（artifacts.py）—— 内容寻址</h4>
+<div class="code"><span class="kw">def</span> put_bytes(self, content, ...) -&gt; <span class="tp">Artifact</span>:
+    digest = hashlib.sha256(content).hexdigest()
+    relative = Path(<span class="str">"sha256"</span>) / digest[:2] / digest   <span class="cm"># sha256/前2位/完整hash</span>
+    target = self.root / relative
+    <span class="kw">if</span> target.exists():
+        <span class="kw">if</span> target.read_bytes() != content:
+            <span class="kw">raise</span> RuntimeError(<span class="str">"artifact digest collision"</span>)  <span class="cm"># 碰撞即抛错</span>
+    <span class="kw">else</span>:
+        temporary = target.with_name(<span class="str">f".tmp-{uuid.uuid4().hex}"</span>)
+        <span class="kw">with</span> temporary.open(<span class="str">"xb"</span>) <span class="kw">as</span> stream:
+            stream.write(content); stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, target)            <span class="cm"># 原子落盘</span>
+    <span class="kw">return</span> Artifact(artifact_id=<span class="str">f"sha256:{digest}"</span>, ...)</div>
+<p>先写临时文件再 <code>os.replace</code> 原子落盘 + fsync；已存在则校验内容（碰撞即抛错）。SQLite 只存元数据，大日志不进库。<code>read_bytes</code> 还校验 URI 不逃逸 store 根目录（防路径穿越）。</p>
+<div class="step-box"><p><b>为什么分三层：</b>状态需要事务一致性（SQLite）、事件需要顺序追加（JSONL）、证据需要不可篡改（内容寻址）。三者职责不同，混在一起会互相拖累。</p></div>
+</div></div>
+
+<!-- 模块 3 -->
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>模块 3：GraphRuntime engine.py —— 调度大脑</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>职责：</b>调度核心。主循环每轮依次：终态判断 → paused → 屏障 → 预算 → 取节点 → 执行 → 持久化 → 路由。</p>
+<h4>两个状态层（别混）</h4>
+<ul>
+<li><b>Run 状态</b>：描述 Human 控制与整体终态（draft → running → paused → delivery_ready → accepted/rejected | failed/error/interrupted/cancelled）。</li>
+<li><b>Node 状态</b>：pending/ready/running/succeeded/failed/error/cancelled/skipped，描述单个节点的局部工作。</li>
+</ul>
+<h4>失败分类（核心）</h4>
+<div class="code"><span class="cm"># _node_status：把 Verifier 结果映射为节点状态</span>
+mapping = {
+    VerifierStatus.PASSED: <span class="str">"succeeded"</span>,
+    VerifierStatus.FAILED: <span class="str">"failed"</span>,      <span class="cm"># 验收没过 → 进修复循环</span>
+    VerifierStatus.ERROR: <span class="str">"error"</span>,        <span class="cm"># 基础设施异常 → 不修代码</span>
+    VerifierStatus.CANCELLED: <span class="str">"cancelled"</span>,
+}</div>
+<p>为什么这是命门：CI 网络抖动若被判「代码失败」，会让 Implementer 改一轮本来正确的代码。</p>
+<h4>条件路由 _route_result</h4>
+<div class="code"><span class="cm"># 选边：跳过已超 max_iterations 的边，取第一个条件匹配的边</span>
+<span class="kw">for</span> edge <span class="kw">in</span> graph.edges:
+    <span class="kw">if</span> edge.from_node != node_id: <span class="kw">continue</span>
+    count = counts.get((edge.from_node, edge.to_node), 0)
+    <span class="kw">if</span> edge.max_iterations <span class="kw">is not None and</span> count &gt;= edge.max_iterations:
+        <span class="kw">continue</span>
+    <span class="kw">if</span> edge.condition <span class="kw">is None or</span> self._condition_matches(edge, result_data, attempt_count):
+        selected = edge; <span class="kw">break</span>
+<span class="cm"># selected 为 None → 无路可走 → 按 status 落终态（succeeded→SUCCEEDED / failed→FAILED / error→ERROR ...）</span></div>
+<p>修复循环收敛靠 <code>edge_traversals</code> 计数 + <code>repair_iterations</code> 预算：走 repair 边前先查 <code>budget.repair_iterations &gt;= max_repair_iterations</code> 或 node 级预算，超限 <code>_finish(BUDGET_EXHAUSTED)</code>；否则 <code>edge_traversals</code>+1、<code>repair_iterations</code>+1，把目标节点置 ready。</p>
+<h4>预算三层兜底</h4>
+<p>run 级（时长/成本/executor_calls）+ node 级（attempt 次数/时长/成本）+ 边级（max_iterations），任一超限 → 终态，绝不无限空转。</p>
+<h4>checkpoint + lineage</h4>
+<div class="code"><span class="cm"># recover 恢复前校验 hash，不一致拒绝恢复</span>
+<span class="kw">if</span> str(run[<span class="str">"contract_hash"</span>]) != contract_hash:
+    <span class="kw">raise</span> RecoveryError(<span class="str">"Contract hash mismatch; refusing recovery"</span>)
+<span class="kw">if</span> str(run[<span class="str">"graph_hash"</span>]) != graph.sha256():
+    <span class="kw">raise</span> RecoveryError(<span class="str">"Graph hash mismatch; refusing recovery"</span>)</div>
+<p>checkpoint 落盘带 graph_hash/contract_hash，时机精确定在：run 创建后、attempt 开始后、结果写入后、路由选定后、暂停后、终态后。</p>
+</div></div>
+
+<!-- 模块 4 -->
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>模块 4：并行 runtime/parallel.py —— 并行节点 + 子图 + 确定性 join</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>职责：</b>支持并行节点、显式 subgraph、确定性 join、有界并发、预算协调和 barrier 覆盖。</p>
+<div class="code"><span class="cm"># ParallelCoordinator.initialize：把并行分支落库，每个分支有独立 subgraph + 状态</span>
+<span class="kw">for</span> order, branch <span class="kw">in</span> enumerate(branches):
+    connection.execute(
+        <span class="str">"INSERT INTO parallel_branches(run_id,container_node_id,branch_id,"
+        "branch_order,subgraph_json,subgraph_hash,status,current_node_id) VALUES (...)"</span>,
+        (run_id, node.node_id, branch.branch_id, order,
+         branch.subgraph.canonical_json(), branch.subgraph.sha256(),
+         <span class="str">"pending"</span>, branch.subgraph.entry_node_id),
+    )
+    <span class="kw">for</span> nested <span class="kw">in</span> branch.subgraph.nodes:
+        <span class="cm"># 每个分支的节点独立落库，entry 节点置 ready，其余 pending</span>
+        ...</div>
+<h4>关键不变量（并行版）</h4>
+<ul>
+<li><b>重启不重复已完成分支的工作</b>：每个分支有自己的 checkpoint 和幂等键，subgraph 落库带 subgraph_hash。</li>
+<li><b>join 输出确定</b>：无论分支完成顺序如何，join 结果按 <code>branch_order</code> 声明顺序归并，而非按完成时序。</li>
+<li><b>失败分支不可被成功分支「掩盖」</b>：一个分支 failed/blocked/errored，join 必须把它显式体现（BranchStatus 里 SUCCEEDED/FAILED/BLOCKED/ERROR/CANCELLED 区分），不能被成功分支 cancel 掉。</li>
+<li><b>共享预算不可被竞态超花</b>：budget 分配在 join 前做有界协调。</li>
+<li><b>barrier 覆盖 active 和 pending 分支</b>：pause/interrupt 时，已启动和待启动的分支都停下。</li>
+</ul>
+<p>模型层对应 <code>ParallelSpec / ParallelBranch / ParallelResult / Subgraph / JoinSpec / BranchResult</code> 六个结构，Node 上通过 <code>parallel / subgraph / join</code> 字段声明；<code>_invoke</code> 里对 PARALLEL/SUBGRAPH 节点走 <code>parallel.step</code>，JOIN 节点走 <code>parallel.join</code>。</p>
+</div></div>
+
+<!-- 模块 5 -->
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>模块 5：图设计 compiler/ + parallel runtime —— 已有能力与待补接线</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>职责：</b>把冻结的 Contract 编译为执行图。这里必须区分两层：<code>ExecutionGraphCompiler</code> 当前总是输出标准串行模板；Phase 6B 已让模型和 Runtime 支持显式 <code>parallel/subgraph/join</code>，但默认编译器还不会按需求复杂度选择它们。</p>
+<h4>图的节点类型是封闭枚举（models/graph.py）</h4>
+<div class="code"><span class="cm"># 节点类型封闭枚举：模型只能在枚举内选，不能注入自定义逻辑</span>
+<span class="kw">class</span> NodeType(StrEnum):
+    AGENT = <span class="str">"agent"</span>
+    COMMAND = <span class="str">"command"</span>
+    VERIFIER = <span class="str">"verifier"</span>
+    ROUTER = <span class="str">"router"</span>
+    DELIVERY = <span class="str">"delivery"</span>
+    PARALLEL = <span class="str">"parallel"</span>     <span class="cm"># 并行节点</span>
+    SUBGRAPH = <span class="str">"subgraph"</span>     <span class="cm"># 显式子图</span>
+    JOIN = <span class="str">"join"</span>           <span class="cm"># 确定性 join</span>
+
+<span class="cm"># Node 带 typed definition：SUBGRAPH/PARALLEL/JOIN 必须有对应定义，且只允许一个</span>
+@model_validator(mode=<span class="str">"after"</span>)
+<span class="kw">def</span> typed_definition_matches_node_type(self) -&gt; <span class="tp">Node</span>:
+    definitions = {NodeType.SUBGRAPH: self.subgraph, NodeType.PARALLEL: self.parallel, NodeType.JOIN: self.join}
+    <span class="kw">if</span> self.node_type <span class="kw">in</span> definitions <span class="kw">and</span> definitions.get(self.node_type) <span class="kw">is</span> None:
+        <span class="kw">raise</span> ValueError(<span class="str">f"{self.node_type.value} node requires its typed definition"</span>)</div>
+<h4>当前实现 vs 下一步模板</h4>
+<table class="data-table">
+<tr><th>层次</th><th>实际状态</th></tr>
+<tr><td>默认 Compiler</td><td><b>已实现：</b>inspect → implement → verify ⇄ repair → review ⇄ review_fix → deliver；Verifier 数量可伸缩，但拓扑模板固定</td></tr>
+<tr><td>并行数据模型与 Runtime</td><td><b>已实现：</b>显式 parallel/subgraph/join、有界并发、durable branch state、确定性 join、共享预算与 barrier</td></tr>
+<tr><td>复杂度 → 模板选择</td><td><b>未实现：</b>尚无从验收条件、模块依赖等信号自动选择单链/标准/并行图的编译策略</td></tr>
+</table>
+<div class="step-box purple">
+<p><b>面试中的正确说法：</b>项目已经证明了“图可作为强类型数据被安全、持久地执行”，也实现了并行底座；但“根据任务设计拓扑”仍是产品层缺口。我的下一步方案是确定性多模板，而不是宣称代码已经会自动设计图。</p>
+</div>
+<p>已兑现的不变量是：图始终是「数据」——节点类型封闭枚举、路由条件只用三字段四操作符，可静态校验（<code>ge graph validate</code>）、可 hash 复现（graph_id 含 contract hash）。</p>
+</div></div>
+
+<!-- 模块 6 -->
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>模块 6：意图编译 conversation/compiler.py —— fail-closed</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>职责：</b>把自然语言文本编译成强类型 ControlIntent。是<b>规则匹配，不是 LLM</b>。</p>
+<h4>关键设计</h4>
+<div class="code"><span class="cm"># 关键词字典：查询 vs 变更在类型层分离</span>
+_QUERY = {
+    QueryAction.QUERY_PROGRESS: (<span class="str">"状态"</span>, <span class="str">"进展"</span>, <span class="str">"做到"</span>, <span class="str">"status"</span>, <span class="str">"progress"</span>),
+    QueryAction.QUERY_RISK: (<span class="str">"风险"</span>, <span class="str">"risk"</span>),
+    QueryAction.QUERY_EVIDENCE: (<span class="str">"报告"</span>, <span class="str">"证据"</span>, <span class="str">"report"</span>, <span class="str">"evidence"</span>),
+}
+_MUTATION = {
+    StateChangeAction.PAUSE: (<span class="str">"暂停"</span>, <span class="str">"pause"</span>),
+    StateChangeAction.INTERRUPT: (<span class="str">"中断"</span>, <span class="str">"停止当前"</span>, <span class="str">"interrupt"</span>),
+    StateChangeAction.REVISE: (<span class="str">"修订"</span>, <span class="str">"修改方向"</span>, <span class="str">"revise"</span>),
+    StateChangeAction.ACCEPT: (<span class="str">"接受"</span>, <span class="str">"accept"</span>),
+    ...}</div>
+<div class="code"><span class="cm"># fail-closed：多动作 / 歧义 / 缺目标 Run → 不执行，要求澄清</span>
+<span class="kw">if</span> len(distinct) != 1:
+    <span class="kw">if</span> len(distinct) &gt; 1:
+        <span class="kw">return</span> IntentCompilation(None, 0.2, <span class="str">"检测到多个控制动作, 请明确只选择一个。"</span>)
+    <span class="kw">return</span> IntentCompilation(None, 0.25, <span class="str">"无法可靠识别控制意图..."</span>)
+run_id = message.run_id <span class="kw">or</span> active_run_id
+<span class="kw">if</span> run_id <span class="kw">is</span> None:
+    <span class="kw">return</span> IntentCompilation(None, 0.4, <span class="str">"缺少明确的目标 Run, 不能执行该动作。"</span>)
+
+<span class="cm"># 危险动作强制确认</span>
+requires_confirmation = selected_action <span class="kw">in</span> {REVISE, RESTART, ACCEPT, REJECT}</div>
+<ul>
+<li><b>fail-closed</b>：多动作/歧义/缺目标 Run → 返回 None + clarification，<b>绝不猜</b>。</li>
+<li><b>判别联合</b>：查询（QueryControlIntent）与变更（StateChangeControlIntent）在类型层隔离；查询 intent 的 requires_confirmation 硬编码 False。</li>
+<li><b>危险动作强制确认</b>：revise/restart/accept/reject 强制 requires_confirmation。</li>
+<li><b>urgency 区分</b>：pause/interrupt 标 IMMEDIATE，其余 NORMAL。</li>
+</ul>
+<div class="step-box orange">
+<p><b>为什么不用 LLM 分类意图：</b>意图编译是「控制面」，必须确定、可审计、fail-closed。模型判断错「暂停」和「中断」，代价是执行了错误的控制动作。这是「控制走确定性」原则的直接应用。（代价是复杂自然语言不够鲁棒，这是已知权衡。）</p>
+</div>
+</div></div>
+
+<!-- 模块 7 -->
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>模块 7：需求探索 discovery/ —— 确定性预扫 + 固定澄清</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>职责：</b>需求澄清 → 生成 Contract 草稿。</p>
+<h4>确定性预扫（ProjectScanner）</h4>
+<div class="code"><span class="cm"># 基于 git ls-files 列文件，限 500 文件 / 2MB</span>
+<span class="kw">for</span> entry <span class="kw">in</span> repository.entries:
+    <span class="kw">if</span> len(included) &gt;= self.max_files <span class="kw">or</span> total + entry.size_bytes &gt; self.max_total_bytes:
+        truncated = <span class="kw">True</span>; <span class="kw">continue</span>
+    included.append(ProjectEntry(path=entry.path, size_bytes=entry.size_bytes))
+    total += entry.size_bytes</div>
+<ul>
+<li>基于 <code>git ls-files</code> 列文件（path + size），限 max_files=500 / max_total_bytes=2MB，超限标记 truncated。</li>
+<li>纯确定性，不调模型。</li>
+</ul>
+<h4>当前固定七问与尚未接通的 Adapter</h4>
+<p><code>DiscoveryService</code> 当前创建七类 <code>UnknownItem</code>：verification、acceptance、dependencies、conventions、permissions、delivery、budget。<code>answer()</code> 每次消费队首，队列为空后直接生成 Contract 草稿。</p>
+<ul>
+<li><b>已实现：</b><code>CodexDiscoveryAdapter</code> 可在 read-only sandbox 中产出结构化 <code>missing_information</code>，并有独立 fixture/opt-in 测试。</li>
+<li><b>未实现：</b>Service 主流程没有调用该 Adapter，也没有把输出转成新 <code>UnknownItem</code>。</li>
+<li><b>未实现：</b>没有轮次字段、去重规则或 <code>max_rounds</code>；因此不能说“追问到无缺失项”。</li>
+<li><b>推荐补法：</b>Adapter 只负责提出候选缺口，确定性代码负责规范化、去重、预算和是否继续，保持控制面可审计。</li>
+</ul>
+<h4>草稿拼装（_draft）</h4>
+<div class="code"><span class="cm"># 纯规则拼 TaskContract：delivery_type 按关键词映射</span>
+delivery_text = answers[UnknownKind.DELIVERY.value].casefold()
+delivery_type = (
+    DeliveryType.COMMIT <span class="kw">if</span> <span class="str">"commit"</span> <span class="kw">in</span> delivery_text
+    <span class="kw">else</span> DeliveryType.PATCH <span class="kw">if</span> <span class="str">"patch"</span> <span class="kw">in</span> delivery_text
+    <span class="kw">else</span> DeliveryType.REPORT_ONLY
+)
+verifier_id = <span class="str">"project-tests"</span>   <span class="cm"># verifier 固定 project-tests</span></div>
+<div class="step-box orange"><p><b>诚实边界：</b>“模型只做缺失项生成、确定性层控制轮次”是合理的未来设计，不是当前实现事实。当前可演示的是持久固定澄清、显式确认、冻结和恢复。</p></div>
+</div></div>
+
+<!-- 模块 8 -->
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>模块 8：契约 contracts/ —— 冻结、修订、禁止替换</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>职责：</b>Contract 的完整生命周期 + Run 准备。</p>
+<h4>冻结需显式确认</h4>
+<div class="code"><span class="kw">def</span> _confirmed(message: HumanMessage) -&gt; <span class="tp">bool</span>:
+    value = message.content.casefold()
+    <span class="kw">return</span> any(token <span class="kw">in</span> value <span class="kw">for</span> token <span class="kw">in</span> (<span class="str">"confirm"</span>, <span class="str">"确认"</span>, <span class="str">"同意"</span>, <span class="str">"批准"</span>))
+
+<span class="kw">def</span> freeze(self, draft_id, confirmation) -&gt; <span class="tp">FrozenContract</span>:
+    <span class="kw">if not</span> _confirmed(confirmation):
+        <span class="kw">raise</span> ContractRevisionError(<span class="str">"explicit Human confirmation is required"</span>)</div>
+<h4>关键操作</h4>
+<ul>
+<li><code>stage</code>：只接受 DRAFT，写 contract_drafts（draft_id 含 sha256 前缀）。</li>
+<li><code>freeze</code>：需 <code>_confirmed</code>，写 contract_revisions + acceptance_locks（含 verifier hash）；幂等——同一 revision 已存在且 hash 一致则直接返回，不一致则抛「a different frozen Contract already owns this revision」。</li>
+<li><code>apply_delta</code>：append-only 修订——delta 必须作用于最新 frozen revision，新 revision 自动 supersedes 旧 revision。</li>
+<li><code>replace_frozen</code>：<b>明确禁止替换</b>（「replacement is not a supported Contract operation」）。</li>
+</ul>
+<h4>RunPlanner：准备 ≠ 执行</h4>
+<p><code>RunPlanner.create</code> 校验 acceptance lock 与契约一致 → compile 成图 → 写 planned_runs（status=prepared）→ 写 immutable 文件（contract.json / graph.json / acceptance.lock）。<b>它只做「生成并落盘一张已编译的图 + 血缘关系」，不启动任何执行。</b>真正执行由显式的 <code>ge run</code> 触发——确认和执行是分离的显式动作，确认绝不静默启动副作用。</p>
+</div></div>
+
+<!-- 模块 9 -->
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>模块 9：Executor executor/ + adapters/codex.py —— Provider 无关协议 + Codex 适配</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>职责：</b>抽象「需要模型推理」的边界，让核心层不依赖具体 Coding CLI。</p>
+<h4>ExecutorProtocol（executor/types.py）</h4>
+<div class="code"><span class="cm"># Provider 无关协议</span>
+<span class="kw">class</span> ExecutorProtocol(Protocol):
+    <span class="kw">def</span> capabilities(self) -&gt; <span class="tp">ExecutorCapabilities</span>: ...
+    <span class="kw">def</span> start(self, request: ExecutorRequest) -&gt; <span class="tp">ExecutorOutcome</span>: ...
+    <span class="kw">def</span> resume(self, session, request) -&gt; <span class="tp">ExecutorOutcome</span>: ...
+    <span class="kw">def</span> review(self, request) -&gt; <span class="tp">ExecutorOutcome</span>: ...
+    <span class="kw">def</span> cancel(self, session, *, grace_seconds: float = 5) -&gt; <span class="tp">bool</span>: ...
+
+<span class="cm"># 类型层强制 reviewer/observer 只读</span>
+<span class="kw">def</span> __post_init__(self) -&gt; <span class="kw">None</span>:
+    <span class="kw">if</span> (self.role <span class="kw">in</span> {ExecutorRole.REVIEWER, ExecutorRole.OBSERVER}
+            <span class="kw">and</span> self.sandbox <span class="kw">is not</span> SandboxMode.READ_ONLY):
+        <span class="kw">raise</span> ValueError(<span class="str">"reviewer and observer requests must be read-only"</span>)
+
+<span class="cm"># Session 轮换策略</span>
+<span class="kw">def</span> allows_resume(self, role, *, same_node) -&gt; <span class="tp">bool</span>:
+    <span class="kw">return</span> role <span class="kw">is</span> ExecutorRole.IMPLEMENTER <span class="kw">and</span> same_node
+<span class="kw">def</span> should_rotate(self, session) -&gt; <span class="tp">bool</span>:
+    <span class="kw">return</span> (session.continuation_count &gt;= self.max_continuations
+            <span class="kw">or</span> session.failure_count &gt;= self.rotate_after_failures
+            <span class="kw">or</span> session.role <span class="kw">is not</span> ExecutorRole.IMPLEMENTER)</div>
+<ul>
+<li>只定义 <code>start / resume / review / cancel / capabilities</code>。</li>
+<li><code>ExecutorRequest</code> 强制工作目录、sandbox、context、output_schema、timeout。</li>
+<li><code>__post_init__</code> 强制 reviewer/observer 必须 read-only——<b>类型层防止审查者拿写权限</b>。</li>
+<li>Session 轮换：非 implementer 恒换新（角色变化或独立审查必然换新 Session）。</li>
+</ul>
+<h4>Codex Adapter 四个工程点（adapters/codex.py）</h4>
+<ol>
+<li><b>能力探测 preflight</b>：不硬编码版本假设，跑 <code>codex --version / login status / --help / exec --help / resume --help / review --help</code>，从 help 文本解析 --json/--output-schema/--output-last-message/--sandbox/--ask-for-approval never。运行时事实来源永远是本机 CLI。</li>
+<li><b>argv-only 安全构造</b>：全程 shell=False + 列表 argv。</li>
+<li><b>Structured Output 适配</b>：把普通 JSON Schema 转 Codex strict-object（去 default/examples、全 required + additionalProperties:false）。</li>
+<li><b>进程监督与取消</b>：跟踪 Popen，cancel 先 terminate() 再 wait(grace_seconds)，超时如实报告「未能即时终止」。</li>
+</ol>
+<div class="code"><span class="cm"># _argv：argv-only 构造，shell=False</span>
+<span class="kw">def</span> _argv(self, mode, request, schema_path, output_path, session):
+    argv = [self.executable, <span class="str">"--ask-for-approval"</span>, <span class="str">"never"</span>, <span class="str">"exec"</span>]
+    <span class="kw">if</span> mode == <span class="str">"resume"</span>:
+        argv.extend([<span class="str">"resume"</span>, session.provider_session_id])
+    <span class="kw">else</span>:
+        argv.extend([<span class="str">"--sandbox"</span>, request.sandbox.value])
+    argv.extend([<span class="str">"--json"</span>, <span class="str">"--output-schema"</span>, str(schema_path),
+                 <span class="str">"--output-last-message"</span>, str(output_path), <span class="str">"-"</span>])
+    <span class="kw">return</span> argv
+
+<span class="cm"># _strict_output_schema：转 Codex strict-object</span>
+<span class="kw">def</span> visit(value):
+    <span class="kw">if</span> isinstance(value, <span class="tp">dict</span>):
+        result = {k: visit(v) <span class="kw">for</span> k, v <span class="kw">in</span> value.items()
+                  <span class="kw">if</span> k <span class="kw">not in</span> {<span class="str">"default"</span>, <span class="str">"examples"</span>}}   <span class="cm"># 去 default/examples</span>
+        <span class="kw">if</span> <span class="str">"properties"</span> <span class="kw">in</span> result:
+            result[<span class="str">"required"</span>] = list(result[<span class="str">"properties"</span>])          <span class="cm"># 全 required</span>
+            result[<span class="str">"additionalProperties"</span>] = <span class="kw">False</span>
+        <span class="kw">return</span> result
+    ...</div>
+<div class="step-box"><p><b>换 Claude Code 改多少：</b>新增一个 Adapter 实现同协议 + capabilities()，核心 Runtime/存储/协议不动。provider 专属格式不写入核心状态模型。</p></div>
+</div></div>
+
+<!-- 模块 10 -->
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>模块 10：Verifier verifier/ —— 确定性验证 + secret 脱敏 + 生命周期</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>职责：</b>执行确定性验证，区分 passed/failed/error，并保证 secret 不泄漏。</p>
+<h4>三类内置验证器</h4>
+<ul>
+<li><code>builtin/command</code>：argv-only，拒绝 shell 元字符，区分 passed/failed/error，timeout 与 output 超限归为 error。</li>
+<li><code>builtin/http-pipeline</code>：声明式异步流水线，trigger（幂等键）→ 提取 external_id → poll → 状态映射 → 下载报告 → cancel；不跟随重定向、限响应字节、5xx 视为基础设施可重试。</li>
+<li><code>project/subprocess</code>：argv entrypoint + JSON stdin/stdout 协议，environment 白名单只放行 PATH/PATHEXT/SYSTEMROOT/WINDIR/COMSPEC/TMP/TEMP 七项，secret 只注入环境、不进 stdin。</li>
+</ul>
+<h4>能力策略与 secret 脱敏（policy.py）</h4>
+<div class="code"><span class="cm"># 网络 host 精确 allowlist</span>
+<span class="kw">def</span> require_url(manifest, url):
+    host = (urlsplit(url).hostname <span class="kw">or</span> <span class="str">""</span>).lower().rstrip(<span class="str">"."</span>)
+    <span class="kw">if</span> host <span class="kw">not in</span> manifest.capabilities.network.allow:
+        <span class="kw">raise</span> CapabilityViolation(<span class="str">f"network host is not allowlisted: {host}"</span>)
+
+<span class="cm"># secret 只引用不传值：resolve 时才从 values 注入</span>
+<span class="kw">def</span> resolve(self, manifest) -&gt; <span class="tp">dict</span>:
+    <span class="kw">for</span> reference <span class="kw">in</span> manifest.capabilities.secrets:
+        resolved[reference] = self._values[reference]   <span class="cm"># 引用名 → 值，只在执行时</span></div>
+<div class="code"><span class="cm"># SecretRedactor 覆盖四种变体 + 流式跨 chunk</span>
+variants.update({
+    value,                                    <span class="cm"># raw</span>
+    quote(value, safe=<span class="str">""</span>),                   <span class="cm"># URL-encoded</span>
+    base64.b64encode(value.encode()).decode(),          <span class="cm"># base64</span>
+    base64.urlsafe_b64encode(value.encode()).decode(),  <span class="cm"># base64-urlsafe</span>
+})
+
+<span class="cm"># StreamingSecretRedactor：先累积到 final 再统一 redact，处理跨 chunk 泄漏</span></div>
+<ul>
+<li>网络默认拒绝、host 精确 allowlist；manifest 校验拒绝通配符 host 与 secret 值。</li>
+<li>secret 必须是「identifier reference, never value」，值只在执行时注入环境。</li>
+<li><code>SecretRedactor</code> 覆盖 raw/URL-encoded/base64/base64-urlsafe 四变体；<code>StreamingSecretRedactor</code> 处理跨 chunk 泄漏。</li>
+</ul>
+<h4>生命周期状态机</h4>
+<p>draft → validated → tested → dry_run（每步需 passed:true 证据）→ freeze（要求已 dry-run、关联 Contract 已冻结且 type 匹配）。verify_frozen 每次执行前重算 manifest/source/tests/fixtures 的 sha256，漂移即拒绝。</p>
+</div></div>
+
+<!-- 模块 11 -->
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>模块 11：Review review/ + delivery/review.py —— 只读隔离 + 多维审查</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>职责：</b>独立审查，防止「既当运动员又当裁判」。</p>
+<h4>ReadOnlyRoleRunner（review/roles.py）</h4>
+<div class="code"><span class="cm"># 执行前校验：role 匹配 + read-only + fresh Session</span>
+<span class="kw">def</span> _validate_fresh_readonly(self, request, expected_role) -&gt; <span class="kw">None</span>:
+    <span class="kw">if</span> request.role <span class="kw">is not</span> expected_role <span class="kw">or</span> request.sandbox <span class="kw">is not</span> SandboxMode.READ_ONLY:
+        <span class="kw">raise</span> RoleIsolationError(<span class="str">f"{expected_role.value} must use a read-only request"</span>)
+    <span class="kw">if</span> request.attempt_id <span class="kw">in</span> self._attempts:
+        <span class="kw">raise</span> RoleIsolationError(<span class="str">"read-only role attempts must use a fresh Session"</span>)
+    self._attempts.add(request.attempt_id)
+
+<span class="cm"># observer 前后取 fingerprint，主 Run 状态被污染则抛错</span>
+<span class="kw">def</span> observe(self, request) -&gt; <span class="tp">Any</span>:
+    self._validate_fresh_readonly(request, ExecutorRole.OBSERVER)
+    before = self.fingerprint()
+    <span class="kw">try</span>:
+        result = self.executor.start(request)
+    <span class="kw">except</span> Exception <span class="kw">as</span> exc:
+        <span class="kw">if</span> self.fingerprint() != before:
+            <span class="kw">raise</span> RoleIsolationError(<span class="str">"Observer failure mutated main Run state"</span>) <span class="kw">from</span> exc
+        <span class="kw">raise</span> ObserverFailure(str(exc)) <span class="kw">from</span> exc
+    <span class="kw">if</span> self.fingerprint() != before:
+        <span class="kw">raise</span> RoleIsolationError(<span class="str">"Observer mutated main Run state"</span>)
+    <span class="kw">return</span> result</div>
+<h4>ReviewFixCoordinator（review/coordinator.py）</h4>
+<div class="code"><span class="cm"># review → (changes_requested) fix + 重跑受影响 verifier → fresh review，超预算 BLOCKED</span>
+<span class="kw">for</span> attempt <span class="kw">in</span> range(1, self.max_fix_attempts + 2):
+    result = self.review(attempt)
+    <span class="kw">if</span> result.verdict <span class="kw">is not</span> ReviewVerdict.CHANGES_REQUESTED:
+        <span class="kw">return</span> result
+    <span class="kw">if</span> attempt &gt; self.max_fix_attempts:
+        <span class="kw">return</span> ReviewResult(verdict=ReviewVerdict.BLOCKED, ...)
+    self.implement_fix(result.findings)          <span class="cm"># 修复</span>
+    self.run_affected_verifiers(result.findings) <span class="cm"># 重跑受影响 verifier</span></div>
+<h4>四维审查（delivery/review.py）</h4>
+<div class="code"><span class="cm"># aggregate_reviews：fail-closed 聚合</span>
+<span class="kw">if</span> (errors
+        <span class="kw">or</span> any(item.verdict <span class="kw">is</span> ReviewVerdict.BLOCKED <span class="kw">for</span> item <span class="kw">in</span> ordered)
+        <span class="kw">or</span> any(finding.blocking <span class="kw">for</span> finding <span class="kw">in</span> findings)):
+    verdict = ReviewVerdict.BLOCKED
+<span class="kw">elif</span> any(item.verdict <span class="kw">is</span> ReviewVerdict.CHANGES_REQUESTED <span class="kw">for</span> item <span class="kw">in</span> ordered):
+    verdict = ReviewVerdict.CHANGES_REQUESTED
+<span class="kw">else</span>:
+    verdict = ReviewVerdict.APPROVED</div>
+<p>Phase 5 升级为 contract/correctness/security/test_adequacy 四维，每维独立 fresh read-only Session。<code>aggregate_reviews</code> 强制「每一维恰好一个结果」（<code>set(by_dimension) == set(ReviewDimension)</code>）。</p>
+<div class="step-box red"><p><b>两条铁律（防 Agent 自欺）：</b>① 修复后必须重跑受影响 Verifier，不能复用修复前结果；② 审查必须是全新 read-only Session，不能是 Implementer 在原 Session 里自省。ReviewContext 不含 conversation——Reviewer 拿不到 Implementer 对话，只能看冻结 Contract + diff + 客观证据。</p></div>
+</div></div>
+
+<!-- 模块 12 -->
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>模块 12：交付 delivery/ —— 证据链 + 永不自动合并</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>职责：</b>从持久化事实确定性编译出交付物，供 Human 验收。</p>
+<h4>Requirement Matrix（matrix.py）</h4>
+<div class="code"><span class="cm"># 每验收条件一行，六类证据；只有 immutable 或 sha256 证据才可信</span>
+_CATEGORIES = (<span class="str">"implementation"</span>, <span class="str">"test"</span>, <span class="str">"verifier"</span>, <span class="str">"ci"</span>, <span class="str">"review"</span>, <span class="str">"human"</span>)
+
+<span class="cm"># 状态判定：有可信的 failed 证据 → FAILED；有可信证据 → VERIFIED；否则 UNVERIFIED</span>
+failed = any(item.outcome == <span class="str">"failed"</span> <span class="kw">and</span> item.trusted <span class="kw">for</span> item <span class="kw">in</span> flattened)
+trusted = tuple(item <span class="kw">for</span> item <span class="kw">in</span> flattened <span class="kw">if</span> item.trusted)
+<span class="kw">if</span> failed:      status = MatrixStatus.FAILED
+<span class="kw">elif</span> trusted:    status = MatrixStatus.VERIFIED
+<span class="kw">else</span>:          status = MatrixStatus.UNVERIFIED   <span class="cm"># fail-closed</span></div>
+<p><code>EvidenceRef.trusted</code>：只有 immutable 或 sha256: 内容寻址引用才被信任，否则 fail-closed 为 unverified。</p>
+<h4>GitHub（github.py）</h4>
+<div class="code"><span class="cm"># PR 幂等键：title/body/draft 可变，identity 稳定（repo+run+base+head）</span>
+<span class="kw">def</span> _key(self, spec: PullRequestSpec) -&gt; <span class="tp">str</span>:
+    raw = <span class="str">"\0"</span>.join((self.repository.full_name, spec.run_id, spec.base, spec.head)).encode()
+    <span class="kw">return</span> hashlib.sha256(raw).hexdigest()</div>
+<ul>
+<li>只允许 https，loopback 除外，host 必须 allowlist。</li>
+<li>错误分类 auth/rate_limit/network/api/identity/unknown_status/uncertain_effect/barrier。</li>
+<li><code>PullRequestManager.ensure</code>：幂等键 sha256(repo+run+base+head)——title/body 可变，identity 稳定；先 _discover 已有 PR 则 checkpoint；网络错误 → UNCERTAIN_EFFECT 拒绝盲重试；<b>没有 merge API</b>。</li>
+</ul>
+<h4>十文件报告 bundle（report.py）</h4>
+<div class="code"><span class="cm"># 十文件清单</span>
+_FILES = (
+    <span class="str">"summary.md"</span>, <span class="str">"requirement-matrix.md"</span>, <span class="str">"changes.diff"</span>,
+    <span class="str">"test-results.json"</span>, <span class="str">"review-report.md"</span>, <span class="str">"execution-trace.json"</span>,
+    <span class="str">"cost-report.json"</span>, <span class="str">"pull-request.json"</span>,
+    <span class="str">"control-history.json"</span>, <span class="str">"external-effects.json"</span>,
+)
+
+<span class="cm"># 编译时先 redact 再落盘：每个文件先过 SecretRedactor</span>
+<span class="kw">for</span> name <span class="kw">in</span> _FILES:
+    raw = self.redactor.redact(contents[name]).encode(<span class="str">"utf-8"</span>)
+    artifact = self.artifacts.put_bytes(raw, ...)
+    (target / name).write_bytes(raw)
+    artifact_refs[name] = artifact.artifact_id</div>
+<p>从持久化事实确定性编译，<b>不依赖最后一个 Agent Session 是否还活着</b>；每个文件内容先过 SecretRedactor 再落盘；bundle 写 <code>delivery_report_revisions</code> 表（revision 单调递增），report 事件冻结。</p>
+<h4>Human 验收（control.py）</h4>
+<div class="code"><span class="cm"># accept/reject/revise 都要先过：显式确认 + 编译成对应 typed action</span>
+<span class="kw">if not</span> intent.requires_confirmation <span class="kw">or</span> (
+    <span class="str">"confirm"</span> <span class="kw">not in</span> message.content.casefold() <span class="kw">and</span> <span class="str">"确认"</span> <span class="kw">not in</span> message.content
+):
+    <span class="kw">raise</span> ValueError(<span class="str">"explicit Human confirmation is required"</span>)
+
+<span class="cm"># reject/revise 产生新 contract revision + 新 Run lineage</span>
+<span class="kw">if</span> action <span class="kw">in</span> {StateChangeAction.REJECT, StateChangeAction.REVISE}:
+    new_revision = contract_revision + 1
+    ...</div>
+<p>accept 只写 append-only HumanAcceptanceRecord，<code>merge_performed: False</code> 硬编码在模型里——<b>整个系统没有 merge API</b>。reject/revise 产生新 contract revision + 新 Run lineage（parent_run_id 指向旧 Run，旧 Run 证据不被覆盖）。</p>
+</div></div>
+
+<!-- 模块 13 -->
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>模块 13：隔离 workspace/git.py —— Git worktree + barrier 联动</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>职责：</b>每个 Run 独立 Git worktree，实现环境隔离。</p>
+<div class="code"><span class="cm"># create：先查 can_start（barrier 联动），再校验 run_id 安全 + 路径不逃逸</span>
+<span class="kw">def</span> create(self, run_id, *, accepted_commit=None) -&gt; <span class="tp">GitWorkspace</span>:
+    <span class="kw">if not</span> self.can_start():
+        <span class="kw">raise</span> WorkspaceError(<span class="str">"persisted Run barrier forbids a worktree write"</span>)
+    slug = re.sub(<span class="str">r"[^A-Za-z0-9_.-]+"</span>, <span class="str">"-"</span>, run_id).strip(<span class="str">"-."</span>)
+    <span class="kw">if not</span> slug <span class="kw">or</span> slug != run_id:
+        <span class="kw">raise</span> WorkspaceError(<span class="str">"run_id is not safe for a branch/worktree path"</span>)
+    target = (self.worktrees_root / slug).resolve()
+    <span class="kw">if</span> target.parent != self.worktrees_root.resolve():
+        <span class="kw">raise</span> WorkspaceError(<span class="str">"worktree target escapes the configured root"</span>)
+    commit = accepted_commit <span class="kw">or</span> self._git(<span class="str">"rev-parse"</span>, <span class="str">"HEAD"</span>)
+    verified = self._git(<span class="str">"rev-parse"</span>, <span class="str">"--verify"</span>, <span class="str">f"{commit}^{{commit}}"</span>)
+    branch = <span class="str">f"ge/run-{slug}"</span>
+    result = self._run(<span class="str">"worktree"</span>, <span class="str">"add"</span>, <span class="str">"-b"</span>, branch, str(target), verified)
+    ...</div>
+<ul>
+<li><code>create</code> 查 <code>can_start()</code>——barrier 生效后拒绝创建新 worktree，与中断机制联动。</li>
+<li>三重安全校验：run_id 只含安全字符、target 不逃逸 worktrees 根、commit 用 rev-parse --verify 校验。</li>
+<li>每个 Run 独立 branch（<code>ge/run-&lt;slug&gt;</code>），代码变更与其他 Run、与主工作区完全隔离。</li>
+<li>Windows-safe：全程 argv-only 调 git，不用 shell。</li>
+<li>worktree 本身不写 SQLite，权威状态仍只在 Runtime 存储。</li>
+</ul>
+</div></div>
+
+<!-- 模块 14 -->
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>模块 14：服务层 service/ + mcp_server.py + 插件 —— 四种等价入口</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>职责：</b>CLI、Codex 插件、MCP、UI 四入口共享同一个 Human Gateway。</p>
+<h4>HumanGateway（service/gateway.py）</h4>
+<div class="code"><span class="cm"># 统一 dispatch：所有入口（CLI/插件/MCP/UI）都走这里</span>
+<span class="kw">if</span> operation == <span class="str">"start"</span>:      <span class="kw">return</span> self.start(payload)
+<span class="kw">if</span> operation == <span class="str">"message"</span>:    <span class="kw">return</span> self.message(payload)
+<span class="kw">if</span> operation == <span class="str">"confirm"</span>:    <span class="kw">return</span> self.confirm(payload)
+<span class="kw">if</span> operation == <span class="str">"run"</span>:        <span class="kw">return</span> self.run(payload)
+<span class="kw">if</span> operation <span class="kw">in</span> {<span class="str">"pause"</span>, <span class="str">"resume"</span>, <span class="str">"interrupt"</span>, <span class="str">"cancel"</span>}:  <span class="kw">return</span> self.mutate_run(operation, payload)
+<span class="kw">if</span> operation <span class="kw">in</span> {<span class="str">"accept"</span>, <span class="str">"reject"</span>, <span class="str">"revise"</span>}:  <span class="kw">return</span> self.decide(operation, payload)
+<span class="kw">if</span> operation == <span class="str">"status"</span>:    <span class="kw">return</span> self.status(payload)
+<span class="kw">if</span> operation == <span class="str">"report"</span>:    <span class="kw">return</span> self.report(payload)
+<span class="kw">raise</span> ServiceError(ServiceErrorCode.INVALID_REQUEST, <span class="str">"unsupported gateway operation"</span>)</div>
+<ul>
+<li>统一 dispatch：start/message/confirm/run/pause/resume/interrupt/cancel/accept/reject/revise/status/report。</li>
+<li>自然语言一律先落库 HumanMessage → 经 IntentCompiler → 强类型 ControlIntent → Runtime，<b>不绕过 mutation 校验</b>。</li>
+</ul>
+<h4>版本化本地 IPC（service/client.py + protocol.py）</h4>
+<ul>
+<li>project/Run/workspace 身份 + request_id + idempotency_key + typed errors + limits + timeout + reconnect + bounded retry。</li>
+<li>显式校验 package/Runtime API/IPC 版本，不兼容 fail-closed。</li>
+</ul>
+<h4>MCP Server（mcp_server.py）</h4>
+<ul>
+<li>暴露最小工具集：start/message/confirm/status/report + run/pause/resume/interrupt/cancel/accept/reject/revise。</li>
+<li>显式校验 Codex 版本（>=0.147.0）；<b>没有 merge 工具</b>。</li>
+</ul>
+<h4>薄 Codex 插件</h4>
+<ul>
+<li>valid manifest + Graph Engineering Skill + MCP 配置模板 + 兼容性检查。</li>
+<li>插件和 MCP Session 不含权威 Run 状态，永不直接写 SQLite 或 worktree。</li>
+</ul>
+</div></div>
+
+<!-- 模块 15 -->
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>模块 15：可观测性 observability/ —— OTel 边界（非权威、secret-safe）</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>职责：</b>为 Runtime/IPC/MCP/Agent/Verifier/Review/GitHub/Report 提供 trace/metrics，关联持久化身份。</p>
+<h4>数据模型（types.py）</h4>
+<div class="code"><span class="cm"># 不可变 exporter 记录</span>
+@dataclass(frozen=True)
+<span class="kw">class</span> SpanRecord:
+    trace_id: <span class="tp">str</span>; span_id: <span class="tp">str</span>; parent_span_id: <span class="tp">str | None</span>
+    links: <span class="tp">tuple</span>[SpanLink, ...]
+    attributes: <span class="tp">tuple</span>[<span class="tp">tuple</span>[<span class="tp">str</span>, AttributeValue], ...]   <span class="cm"># 属性 allowlist</span>
+
+@dataclass(frozen=True)
+<span class="kw">class</span> MetricRecord:
+    name: <span class="tp">str</span>; value: <span class="tp">int | float</span>; unit: <span class="tp">str</span>
+    labels: <span class="tp">tuple</span>[<span class="tp">tuple</span>[<span class="tp">str</span>, AttributeValue], ...]   <span class="cm"># 有界 label</span></div>
+<h4>Provider 语义（provider.py）</h4>
+<div class="code"><span class="cm"># TelemetryProvider.span：disabled / 越限 / 无 exporter 都返回 NoOp</span>
+<span class="kw">def</span> span(self, name, identity, attributes) -&gt; <span class="tp">TelemetrySpan | NoOpTelemetrySpan</span>:
+    <span class="kw">if</span> self._disabled: <span class="kw">return</span> NoOpTelemetrySpan()
+    <span class="kw">if</span> <span class="kw">not</span> self._within_limits(...): <span class="kw">return</span> NoOpTelemetrySpan()
+    <span class="kw">if</span> self.exporter <span class="kw">is</span> None: <span class="kw">return</span> NoOpTelemetrySpan()
+    ...</div>
+<h4>关键不变量</h4>
+<ul>
+<li><b>非权威</b>：telemetry 永远不用于 routing/recovery 决策，exporter 失败不能影响 Runtime 状态。</li>
+<li><b>secret-safe</b>：secret 值和非受限 prompt/log body 永不导出，属性走 allowlist（AttributeValue 只允许 str/bool/int/float）。</li>
+<li><b>有界</b>：sampling + 有界 buffering + shutdown flush + exporter failure 隔离（ExportResult 分 success/partial/failure）。</li>
+<li><b>默认 no-op</b>：<code>NoOpTelemetryProvider</code> 所有方法返回 NoOp span/空，不依赖真实 collector；deterministic in-memory exporter 用于本地测试。</li>
+<li><b>只读操作保持只读</b>：instrument 后查询仍不改变状态。</li>
+</ul>
+</div></div>
+
+<!-- 模块 16 -->
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>模块 16：UI（可选项目页）—— 只读 + 确认卡片</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>职责：</b>一个可选的项目/Run 界面，与 CLI/插件/MCP 是同一 Human Gateway 的第四种前端。</p>
+<h4>能力</h4>
+<ul>
+<li>实时节点进度、风险、预算、Contract、Requirement Matrix、Verifier/CI、Review、Final Report、Human messages。</li>
+<li>pause/interrupt 等确认动作以「确认卡片」呈现，绑定到持久化、未过期的 pending action。</li>
+</ul>
+<h4>铁律</h4>
+<ul>
+<li>UI 永不直接写 SQLite、worktree 或 provider adapter。</li>
+<li>Human messages 仍走 HumanMessage + IntentCompiler。</li>
+<li>查询页不改变 Runtime 状态；UI 断开不影响 Runs。</li>
+<li>untrusted 报告内容安全渲染，secret 保持脱敏。</li>
+</ul>
+</div></div>
+
+</div>
+
+<!-- ==================== Tab 3: 一次需求全流程 ==================== -->
+<div class="tab-content" id="tab3">
+
+<div class="card">
+<h2>主线鸟瞰</h2>
+<div class="code"><span class="cm"># 一次任务从自然语言到验收的完整生命周期</span>
+ge start ──► 自然语言落库 ──► 意图编译 ──► 需求探索(Discovery)
+                                             │
+                                             ▼
+                                   契约草稿 → 契约冻结(Freeze)
+                                             │
+                                             ▼
+                              Compiler 生成标准串行图（并行图可显式提供）
+                                             │
+                                             ▼
+                                   Run 准备(Planner，prepared)
+                                             │
+                                             ▼
+                                  ★ ge run 显式启动 → GraphRuntime 跑图（当前仅 fixture）
+                                             │
+                                             ▼
+                                   交付报告 → Human 验收(accept/reject/revise)</div>
+<p>每个阶段回答四件事：<b>入口代码在哪、数据怎么流转、关键不变量、为什么这么设计</b>。</p>
+</div>
+
+<div class="card">
+<h2>阶段 1：自然语言进入系统 ——「先落库，再解释」</h2>
+<p><b>入口：</b><code>ge start</code> 交互式 REPL（或插件/MCP 的 message 工具）。</p>
+<div class="step-box">
+<p><b>数据流转：</b>输入一句话 → 构造不可变 <code>HumanMessage</code> → 先 append 落库 → 再解释。</p>
+</div>
+<p><b>关键不变量：消息永远先落库，再被解释。</b></p>
+<div class="code"><span class="cm"># conversation/repository.py append() 的顺序</span>
+<span class="kw">def</span> append(conversation_id, message):
+    <span class="cm"># 1. 先校验 actor/project 一致</span>
+    <span class="cm"># 2. 幂等：同 message_id 重复则返回原消息，内容碰撞则抛错</span>
+    <span class="cm"># 3. 写入 human_messages 表（不可变）</span>
+    <span class="cm"># 4. 才发 human.message.received 事件</span></div>
+<p><b>为什么：</b>如果解释失败、进程崩溃、后续处理出错，原始自然语言不能丢。这是「权威状态在持久层、不在内存」的第一处体现。</p>
+</div>
+
+<div class="card">
+<h2>阶段 2：需求探索 ——「确定性预扫 + 固定七类澄清」</h2>
+<p><b>入口：</b>DiscoveryService，由 start 流程触发。</p>
+<div class="code"><span class="cm"># discovery 流程</span>
+discovery.start()
+  → ProjectScanner.scan()        <span class="cm"># 预扫仓库（确定性，列文件）</span>
+  → 生成七类 unknown             <span class="cm"># verification / acceptance / dependencies / conventions / permissions / delivery / budget</span>
+  → 逐项 next_question/answer    <span class="cm"># 多轮澄清</span>
+  → 队列为空 → _draft() 规则拼 TaskContract</div>
+<p><b>关键不变量：</b>澄清问题、答案和草稿都持久化，进程重启可继续；草稿只有 Human 显式 confirm 后才冻结。</p>
+<p><b>已知缺陷：</b><code>CodexDiscoveryAdapter</code> 虽能独立输出 <code>missing_information</code>，但尚未接入这条主路径；没有动态追加、去重和 <code>max_rounds</code>。</p>
+</div>
+
+<div class="card">
+<h2>阶段 3：契约冻结 ——「append-only 的真相」</h2>
+<p><b>入口：</b>ContractRepository，用户在 confirm 后触发。</p>
+<div class="step-box red">
+<p><b>关键不变量：契约一旦冻结，只能追加新版本，不能修改或替换。</b></p>
+</div>
+<p>三层防线：</p>
+<ol>
+<li><code>freeze</code> 必须先过 <code>_confirmed</code>（匹配 confirm/确认/同意/批准），否则抛错。</li>
+<li><code>apply_delta</code> 强制「delta 必须作用于最新 frozen 版本」，新 revision 自动 supersedes 旧 revision。</li>
+<li><code>replace_frozen</code> 无论怎样都抛错——「替换契约这个操作在系统里不存在」。</li>
+</ol>
+<p><b>为什么这么狠：</b>Contract 是「需求事实源」。如果实现 Agent 能改契约，「自治开发」就变成「Agent 自己定义需求然后自我满足」，验收失去意义。</p>
+</div>
+
+<div class="card">
+<h2>阶段 4：图设计 ——「固定编译器 + 可表达的并行底座」</h2>
+<p><b>入口：</b><code>ExecutionGraphCompiler.compile</code>。</p>
+<p><b>当前事实：</b>冻结 Contract 被确定性编译为标准串行模板：</p>
+<div class="code">inspect → implement → verify.1 … verify.N → review → deliver
+                         ↘ failed → repair ↗       ↘ failed → review_fix → verify.1</div>
+<p>Phase 6B 另行实现了显式 parallel/subgraph/join 模型与 durable Runtime；但默认 Compiler 不会自动产出并行拓扑。未来可基于 Contract 的验收条件、Verifier 和模块依赖选择确定性模板，仍不需要让模型执行任意 Python/Shell。</p>
+</div>
+
+<div class="card">
+<h2>阶段 5：Run 准备 ——「图还没跑」</h2>
+<p><b>入口：</b>RunPlanner.create。</p>
+<p><b>数据流转：</b>校验 acceptance lock 与契约一致 → compile 成图 → 写 planned_runs（status=prepared）→ 写 immutable 文件（contract.json / graph.json / acceptance.lock）。</p>
+<div class="step-box orange">
+<p><b>关键不变量：准备 ≠ 执行。</b>RunPlanner 只做「生成并落盘一张已编译的图 + 血缘关系」，不启动任何执行。真正执行由 Human 显式 <code>ge run</code> 触发——确认和执行是分离的显式动作，确认绝不静默启动副作用。</p>
+</div>
+</div>
+
+<div class="card">
+<h2>阶段 6：自治执行 —— GraphRuntime 主循环（最重要的部分）</h2>
+<p><b>入口：</b><code>ge run &lt;run-id&gt;</code> → GraphRuntime.run()。</p>
+<div class="code"><span class="cm"># 主循环骨架</span>
+<span class="kw">while</span> ...:
+    <span class="cm"># 1. 已经是终态？ → 返回</span>
+    <span class="cm"># 2. paused？ → 返回</span>
+    <span class="cm"># 3. pause/interrupt 屏障？ → 安全点暂停或中断</span>
+    <span class="cm"># 4. 预算耗尽？ → 终态 failed(budget_exhausted)</span>
+    <span class="cm"># 5. 取下一个 ready/running 节点</span>
+    <span class="cm"># 6. 启动 attempt → _invoke → _persist_result</span>
+    <span class="cm"># 7. _route_result（条件路由，决定下一条边）</span></div>
+<p><b>两个状态层：</b>Run 状态描述 Human 控制和整体终态；Node 状态描述单个节点的局部工作。两者正交。</p>
+<h4>失败分类（全项目最重要的判断）</h4>
+<table class="data-table">
+<tr><th>结果</th><th>节点状态</th><th>路由</th></tr>
+<tr><td>Verifier PASSED</td><td>succeeded</td><td>下一节点 / review / deliver</td></tr>
+<tr><td>Verifier FAILED</td><td>failed</td><td>repair → 回到 verify（修复循环）</td></tr>
+<tr><td>Verifier ERROR</td><td>error</td><td>重试或终止（<b>不修代码</b>）</td></tr>
+</table>
+<p>「代码写错」和「环境抖了」在状态层分开，是整套反馈闭环正确性的前提。</p>
+</div>
+
+<div class="card">
+<h2>阶段 7：反馈闭环 ——「失败就修，修完重验，验完再审」</h2>
+<p>三类闭环，对应三个问题：</p>
+<table class="data-table">
+<tr><th>闭环</th><th>触发</th><th>机制</th></tr>
+<tr><td>测试失败 → 自动修复</td><td>verify 节点 failed</td><td>repair 节点 → 回到首个 verify（max_iterations 限次）</td></tr>
+<tr><td>审查需变更 → 修复重验 → 全新审查</td><td>review 节点 changes_requested</td><td>ReviewFixCoordinator：review → fix + 重跑受影响 verifier → fresh review</td></tr>
+<tr><td>基础设施异常 → 重试/终止</td><td>verify 节点 error</td><td>按 retryable 决定重试或终止，不修代码</td></tr>
+</table>
+<p><b>两条铁律：</b>① 修复后必须重跑受影响 Verifier，不能复用修复前结果；② 审查必须是全新 read-only Session，不能是 Implementer 自省。</p>
+</div>
+
+<div class="card">
+<h2>阶段 8：中断与恢复 ——「可恢复的真相」</h2>
+<p><b>中断（barrier）：</b>pause/interrupt 意图在同一事务写 barrier + status。屏障生效后，主循环顶部、_start_attempt、DurableExecutorRuntime、各 Verifier 入口、GitWorkspaceManager 五处拦截，<b>任何新 Agent/Verifier/子进程/HTTP 调用/GitHub 写都不允许启动</b>。</p>
+<p><b>恢复三板斧：</b></p>
+<ol>
+<li><b>事务 checkpoint</b>：run/节点/边/artifact 快照落盘，带 graph_hash/contract_hash，恢复时校验 lineage 防篡改。</li>
+<li><b>幂等键</b>：外部触发用 run_id:node_id 幂等键，HTTP 触发带 Idempotency-Key；已完成 Session 靠 completed_outcome 直接返回不重跑。</li>
+<li><b>不确定副作用「披露而非重试」</b>：recover 发现「triggering 但无 handle」——不盲目重试，生成 UnverifiedItem + ExternalEffect 明确披露「副作用可能已发生、不可安全重试」。</li>
+</ol>
+<div class="step-box green"><p><b>最值得记住的设计哲学：</b>在无法保证 exactly-once 的外部系统面前，诚实的「我不知道、我停下来了」优于假装确定的「我再试一次」。</p></div>
+</div>
+
+<div class="card">
+<h2>阶段 9：交付与验收 ——「证据链 + 永不自动合并」</h2>
+<p><b>交付报告：</b>从持久化事实确定性编译十文件 bundle，不依赖最后一个 Agent Session 是否还活着。</p>
+<p><b>需求矩阵：</b>每验收条件一行，映射六类证据；只有 immutable 或 sha256: 引用才被信任，否则 fail-closed 为 unverified。</p>
+<div class="step-box red">
+<p><b>验收：</b><code>accept</code> 只写 append-only 记录，<code>merge_performed: False</code> 硬编码——<b>整个系统没有 merge API</b>。「把代码合进主干」这个不可逆动作永远留在 Human 手里。reject/revise 产生新 contract revision + 新 Run lineage。</p>
+</div>
+<p><b>为什么所有终态（包括失败/中断/取消）都生成报告：</b>中断/失败后，残留副作用、未验证项、能否继续/修订正是 Human 决策最需要的信息。</p>
+</div>
+
+</div>
+
+<!-- ==================== Tab 4: 完整讲义 ==================== -->
+<div class="tab-content" id="tab4">
+<div class="card">
+<h2>完整讲义（线性阅读版）</h2>
+<p style="color:var(--text-dim);font-size:0.85em">适合从头到尾阅读，串联所有模块的设计、实现与底层原理。</p>
+</div>
+<div class="card lecture-content">
+
+<h1>一、项目背景与定位</h1>
+
+<h2>1.1 传统 Coding Agent 的失控</h2>
+
+<p>传统 Coding Agent 围绕一次长会话工作。复杂任务上会出现五类失控：</p>
+
+<ul>
+<li><strong>需求只存在聊天记录里</strong>：上下文膨胀、compact 后需求与验收条件丢失。</li>
+<li><strong>Agent 同时承担实现、测试、审查</strong>：可能通过修改测试或验收脚本让错误实现通过。</li>
+<li><strong>失败难以归因</strong>：分不清应该重试、修代码、重跑基础设施，还是终止。</li>
+<li><strong>中断/恢复不可靠</strong>：Human 查进度会打断执行；失败或中断后缺少可交付的报告。</li>
+<li><strong>换 CLI 状态即失</strong>：任务状态绑定某个工具会话，迁移即丢。</li>
+</ul>
+
+<h2>1.2 核心解法：推理与控制分离</h2>
+
+<p>本项目把「一次自治开发」建模为<b>持久化执行图</b>，由确定性的 Graph Runtime 管理状态、边界和证据，只有需要模型推理的节点才交给 Coding Agent（Codex）。</p>
+
+<blockquote>模型上下文是临时缓存，不是数据库。Git 是代码事实，Contract 是需求事实，Verifier 是验收事实，Artifact 是执行证据，Graph Runtime 是状态事实。</blockquote>
+
+<p>五类事实源各司其职、互不替代。这是整个项目的灵魂——理解了它，下面所有设计（契约冻结、failed/error 分离、意图 fail-closed、secret 只引用）都有同一个来源：<strong>「把推理交给模型，把控制交给确定性代码」。</strong></p>
+
+<hr />
+
+<h1>二、三层递进：Harness → Loop → Graph</h1>
+
+<p>项目在 2026 年 AI Coding 领域的认知框架中的定位（Peter Steinberger「design loops that prompt them」→ 转向 Graph）：</p>
+
+<ul>
+<li><strong>Harness Engineering</strong>：保证单个 Agent 节点拥有正确的工具、权限、上下文。</li>
+<li><strong>Loop Engineering</strong>：用测试、审查、失败反馈让单个任务局部收敛。</li>
+<li><strong>Graph Engineering</strong>：把多 Agent、确定性工具、反馈循环、外部系统、人工边界组织成可组合、可恢复、可审计的执行图。</li>
+</ul>
+
+<p>三层是<b>递进吸收</b>而非替代：Loop 没有死，它「退」成了 Graph 每个节点内部的运行机制；任何一层都需要 Harness 打底。本项目的三个差异化正是这三层的落点：</p>
+
+<ol>
+<li><strong>契约冻结 + append-only</strong>（Harness 层：需求事实不可被 Agent 改写）</li>
+<li><strong>failed/error 失败语义分类</strong>（Loop 层：反馈闭环的正确性前提）</li>
+<li><strong>Human 正交控制面</strong>（Graph 层：多 Agent + 人工边界被组织进可审计的图）</li>
+</ol>
+
+<hr />
+
+<h1>三、架构分层与单向依赖</h1>
+
+<pre><code>models（协议，最底层，不 import 任何内部模块）
+  ↑
+runtime/store · events · artifacts（持久化三件套）
+  ↑
+runtime/engine（调度大脑）
+  ↑
+compiler / conversation / discovery / contracts / executor / verifier / review / delivery（领域能力）
+  ↑
+adapters（Codex，最外层 provider 专属代码）
+  ↑
+cli.py / service / mcp_server（入口，都是薄的）</code></pre>
+
+<p><strong>铁律：核心层不出现 <code>codex</code> 字样。</strong> 换 Coding CLI，只动 adapter。<code>ExecutorProtocol</code> 定义抽象边界（start/resume/review/cancel/capabilities），Codex 是第一个实现它的 adapter。</p>
+
+<hr />
+
+<h1>四、协议层：强类型是地基（models/）</h1>
+
+<p>36 个 Pydantic 模型导出为 JSON Schema，是跨语言/CLI 迁移的根基。关键设计是<b>用 validator 把设计不变量物理化</b>——不是文档写写，而是类型层就封死。</p>
+
+<h2>4.1 确定性序列化（common.py）</h2>
+<pre><code># ProtocolModel 提供 canonical_json() 与 sha256()
+# canonical_json：排序键 + 紧凑分隔 + 排除 None —— 确定性
+# sha256：冻结证据 + 内容寻址的根基</code></pre>
+
+<h2>4.2 契约 append-only（contract.py）</h2>
+<pre><code>@model_validator(mode="after")
+def revision_is_append_only(self) -&gt; TaskContract:
+    if self.revision == 1 and self.supersedes is not None:
+        raise ValueError("revision 1 must not supersede another contract revision")
+    if self.revision &gt; 1:
+        if self.supersedes is None:
+            raise ValueError("revision &gt; 1 must reference the superseded revision")
+        if self.supersedes.contract_id != self.contract_id:
+            raise ValueError("supersedes.contract_id must match contract_id")
+        if self.supersedes.revision &gt;= self.revision:
+            raise ValueError("supersedes.revision must be lower than revision")
+    # 还强制：验收条件 ID 唯一 + 引用的 verifier 必须存在</code></pre>
+
+<h2>4.3 failed 与 error 分开（results.py）</h2>
+<pre><code>@model_validator(mode="after")
+def distinguish_failed_from_error(self) -&gt; VerifierResult:
+    if self.status is VerifierStatus.FAILED and not self.failure_details:
+        raise ValueError("failure_details is required when status is failed")
+    if self.status is VerifierStatus.ERROR and self.error is None:
+        raise ValueError("error is required when status is error")
+    if self.status is not VerifierStatus.ERROR and self.error is not None:
+        raise ValueError("error is only allowed when status is error")
+    return self</code></pre>
+<p>「失败」和「异常」从类型层就禁止混淆——这是全项目最重要的判断的物理表达。</p>
+
+<h2>4.4 路由条件是数据（graph.py）</h2>
+<pre><code>class RouteField(StrEnum):
+    RESULT_STATUS = "result.status"
+    RESULT_RETRYABLE = "result.retryable"
+    ATTEMPT_NUMBER = "attempt.number"
+
+class RouteOperator(StrEnum):
+    EQUALS = "equals"
+    NOT_EQUALS = "not_equals"
+    IN = "in"
+    NOT_IN = "not_in"</code></pre>
+<p>注释明写 <strong>"it is data, never executable source code"</strong>——只有三字段 + 四操作符，杜绝模型通过图注入任意可执行逻辑。</p>
+
+<hr />
+
+<h1>五、持久化层：状态机 + 事件溯源 + 内容寻址（runtime/）</h1>
+
+<h2>5.1 SQLite StateStore（store.py）</h2>
+<p>单调 migration（Phase 6 时 head=10，代码里用一串 property 层层委派做版本兼容）。核心机制：</p>
+<pre><code>@contextmanager
+def transaction(self) -&gt; Iterator[sqlite3.Connection]:
+    connection = self._connect()
+    try:
+        connection.execute("BEGIN IMMEDIATE")   # 写事务：立即锁
+        yield connection
+        connection.commit()
+    except BaseException:
+        connection.rollback()
+        raise</code></pre>
+<p><b>事件 outbox（事务性发件箱）</b>：<code>enqueue_event</code> 把事件 JSON 写进 <code>event_outbox</code> 表，与状态变更<b>同一事务</b>——状态和它触发的事件要么一起提交、要么一起回滚，事件不丢不重。</p>
+
+<h2>5.2 JSONL EventStore（events.py）</h2>
+<pre><code>def _flush_locked(self, state) -&gt; int:
+    existing = self._existing_ids()          # 读已有 event_id 去重
+    delivered = 0
+    for row in state.outbox_rows():
+        event_id = str(row["event_id"])
+        if event_id not in existing:
+            with self.path.open("a", ...) as stream:
+                stream.write(str(row["event_json"])); stream.write("\n")
+                stream.flush(); os.fsync(stream.fileno())
+            existing.add(event_id)
+        state.mark_event_delivered(event_id)   # 标记已投递
+        delivered += 1
+    return delivered</code></pre>
+<p>同一事件不会因重复 flush 而重复落盘（先读已有 id 去重，再追加 + fsync）。</p>
+
+<h2>5.3 ArtifactStore（artifacts.py）—— 内容寻址</h2>
+<pre><code>def put_bytes(self, content, ...) -&gt; Artifact:
+    digest = hashlib.sha256(content).hexdigest()
+    relative = Path("sha256") / digest[:2] / digest   # sha256/前2位/完整hash
+    target = self.root / relative
+    if target.exists():
+        if target.read_bytes() != content:
+            raise RuntimeError("artifact digest collision")  # 碰撞即抛错
+    else:
+        temporary = target.with_name(f".tmp-{uuid.uuid4().hex}")
+        with temporary.open("xb") as stream:
+            stream.write(content); stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, target)            # 原子落盘
+    return Artifact(artifact_id=f"sha256:{digest}", ...)</code></pre>
+<p>先写临时文件再 <code>os.replace</code> 原子落盘 + fsync；已存在则校验内容（碰撞即抛错）。SQLite 只存元数据，大日志不进库。<code>read_bytes</code> 还校验 URI 不逃逸 store 根目录。</p>
+
+<hr />
+
+<h1>六、Graph Runtime：调度大脑（engine.py）</h1>
+
+<h2>6.1 主循环</h2>
+<p>每轮依次：终态判断 → paused → 屏障 → 预算 → 取节点 → 执行 → 持久化 → 路由。两个状态层正交：<b>Run 状态</b>（Human 控制 + 整体终态）和<b>Node 状态</b>（pending/ready/running/succeeded/failed/error/cancelled/skipped，单个节点的局部工作）。</p>
+
+<h2>6.2 失败分类（核心决策）</h2>
+<pre><code>@staticmethod
+def _node_status(result) -&gt; str:
+    mapping = {
+        VerifierStatus.PASSED: "succeeded",
+        VerifierStatus.FAILED: "failed",      # 验收没过 → 进修复循环
+        VerifierStatus.ERROR: "error",        # 基础设施异常 → 不修代码
+        VerifierStatus.CANCELLED: "cancelled",
+    }
+    if result.status is VerifierStatus.PENDING:
+        return "running"
+    return mapping[result.status]</code></pre>
+<p><b>为什么这是全项目最重要的判断：</b>如果 CI 网络抖动被判成「代码失败」，就会让 Implementer 去改一轮本来正确的代码，甚至引入新 bug。把「代码写错」和「环境抖了」在状态层分开，是整套反馈闭环正确性的前提。</p>
+
+<h2>6.3 条件路由 _route_result</h2>
+<pre><code># 选边：跳过已超 max_iterations 的边，取第一个条件匹配的边
+for edge in graph.edges:
+    if edge.from_node != node_id:
+        continue
+    count = counts.get((edge.from_node, edge.to_node), 0)
+    if edge.max_iterations is not None and count &gt;= edge.max_iterations:
+        continue
+    if edge.condition is None or self._condition_matches(edge, result_data, attempt_count):
+        selected = edge
+        break
+# selected 为 None → 没有可走的边 → 按 status 落到对应终态</code></pre>
+<pre><code>@staticmethod
+def _condition_matches(edge, result, attempt_number) -&gt; bool:
+    if edge.condition is None:
+        return True
+    if condition.field is RouteField.RESULT_STATUS:
+        actual = result.get("status")
+    elif condition.field is RouteField.RESULT_RETRYABLE:
+        actual = result.get("retryable", False)
+    else:  # ATTEMPT_NUMBER
+        actual = attempt_number
+    # equals / not_equals / in / not_in 四种操作符
+    ...</code></pre>
+<p>修复循环的收敛靠<b>edge_traversals 计数 + repair_iterations 预算</b>：走一条 repair 边时先检查 <code>budget.repair_iterations &gt;= max_repair_iterations</code> 或 node 级预算，超限则 <code>_finish(BUDGET_EXHAUSTED)</code>；否则 <code>edge_traversals</code> 加 1、<code>repair_iterations</code> 加 1，把目标节点置 ready。</p>
+
+<h2>6.4 预算三层兜底</h2>
+<ul>
+<li><b>run 级</b>：时长 / 成本 / 总 executor 调用次数。</li>
+<li><b>node 级</b>：attempt 次数 / 时长 / 成本。</li>
+<li><b>边级</b>：max_iterations（限制 repair 循环次数）。</li>
+</ul>
+<p>任一超限 → <code>_finish(FAILED, BUDGET_EXHAUSTED)</code>，绝不无限空转。</p>
+
+<h2>6.5 checkpoint + lineage</h2>
+<pre><code># recover 恢复前校验 hash
+if str(run["contract_hash"]) != contract_hash:
+    raise RecoveryError("Contract hash mismatch; refusing recovery")
+if str(run["graph_hash"]) != graph.sha256():
+    raise RecoveryError("Graph hash mismatch; refusing recovery")</code></pre>
+<p>checkpoint 落盘带 graph_hash/contract_hash，恢复时校验一致，防止恢复到被篡改的图。checkpoint 时机精确定在：run 创建后、attempt 开始后、结果写入后、路由选定后、暂停后、终态后。</p>
+
+<hr />
+
+<h1>七、反馈闭环（Loop 的落点）</h1>
+
+<ul>
+<li><strong>测试失败 → 自动修复</strong>：verify failed → repair → 回到首个 verify（max_iterations 限次）。</li>
+<li><strong>审查需变更 → 修复重验 → 全新审查</strong>：review changes_requested → fix + 重跑受影响 verifier → fresh review。</li>
+<li><strong>基础设施异常 → 重试/终止</strong>：error → 按 retryable 决定，不修代码。</li>
+</ul>
+
+<p><b>两条铁律（防 Agent 自欺）：</b></p>
+<ol>
+<li>修复后必须重跑受影响 Verifier，不能复用修复前结果。</li>
+<li>审查必须是全新 read-only Session，不能是 Implementer 在原 Session 自省。</li>
+</ol>
+
+<hr />
+
+<h1>八、中断与恢复（可恢复的真相）</h1>
+
+<h2>8.1 执行屏障（barrier）</h2>
+<p>pause/interrupt 意图在<b>同一事务</b>写 <code>barrier</code> + status。屏障生效后五处拦截：</p>
+<pre><code># _start_attempt 兜底检查
+if str(run["status"]) != RunStatus.RUNNING.value or run["barrier"] is not None:
+    raise RuntimeInvariantError("execution barrier forbids a new attempt")</code></pre>
+<ul>
+<li>主循环顶部拒绝新节点</li>
+<li>_start_attempt 拒绝新 attempt（上代码）</li>
+<li>DurableExecutorRuntime 拒绝新 Session</li>
+<li>各 Verifier 入口 can_start() 拒绝</li>
+<li>GitWorkspaceManager.create 拒绝新 worktree</li>
+</ul>
+<pre><code>def _honor_barrier_after_result(self, run_id) -&gt; None:
+    barrier = self._barrier(run_id)
+    if barrier == StateChangeAction.PAUSE.value:
+        self._pause_at_safe_point(run_id)      # 安全点 → paused
+    elif barrier == StateChangeAction.INTERRUPT.value:
+        self._finish(run_id, TerminalStatus.INTERRUPTED, ...)  # 终态 interrupted</code></pre>
+
+<h2>8.2 恢复三板斧</h2>
+<ol>
+<li><b>事务 checkpoint</b>：快照落盘 + graph_hash/contract_hash 校验（见 6.5）。</li>
+<li><b>幂等键</b>：外部触发用 <code>run_id:node_id</code>；外部 Verifier 在 <code>_start_attempt</code> 时写 <code>external_handles</code>（trigger_state='triggering'），拿到 handle 后置 'checkpointed'；已完成 Session 靠 completed_outcome 直接返回不重跑。</li>
+<li><b>不确定副作用「披露而非重试」</b>：见下。</li>
+</ol>
+<pre><code># recover 时检测「triggering 但 handle IS NULL」——可能已触发但没存下 handle
+uncertain = connection.execute(
+    "SELECT node_id FROM external_handles "
+    "WHERE run_id = ? AND trigger_state = 'triggering' AND handle IS NULL",
+    (run_id,),
+).fetchone()
+# 发现则 _finish_uncertain_external_effect：生成 UnverifiedItem + ExternalEffect 明确披露</code></pre>
+<p><b>最值得记住的设计哲学：</b>在无法保证 exactly-once 的外部系统面前，诚实的「我不知道、我停下来了」优于假装确定的「我再试一次」。</p>
+
+<hr />
+
+<h1>九、多 Agent 与职责隔离（Harness 的落点）</h1>
+
+<h2>9.1 Executor 抽象（executor/types.py）</h2>
+<pre><code>class ExecutorProtocol(Protocol):
+    def capabilities(self) -&gt; ExecutorCapabilities: ...
+    def start(self, request: ExecutorRequest) -&gt; ExecutorOutcome: ...
+    def resume(self, session: SessionHandle, request: ExecutorRequest) -&gt; ExecutorOutcome: ...
+    def review(self, request: ExecutorRequest) -&gt; ExecutorOutcome: ...
+    def cancel(self, session: SessionHandle, *, grace_seconds: float = 5) -&gt; bool: ...</code></pre>
+<p><b>类型层强制 reviewer/observer 只读：</b></p>
+<pre><code>def __post_init__(self) -&gt; None:
+    if (self.role in {ExecutorRole.REVIEWER, ExecutorRole.OBSERVER}
+            and self.sandbox is not SandboxMode.READ_ONLY):
+        raise ValueError("reviewer and observer requests must be read-only")</code></pre>
+<p><b>Session 轮换策略：</b></p>
+<pre><code>def allows_resume(self, role, *, same_node) -&gt; bool:
+    return role is ExecutorRole.IMPLEMENTER and same_node
+
+def should_rotate(self, session) -&gt; bool:
+    return (session.continuation_count &gt;= self.max_continuations
+            or session.failure_count &gt;= self.rotate_after_failures
+            or session.role is not ExecutorRole.IMPLEMENTER)  # 非 implementer 恒换新</code></pre>
+
+<h2>9.2 Codex Adapter（adapters/codex.py）</h2>
+<ul>
+<li><b>preflight 能力探测</b>：不硬编码版本假设，跑 <code>codex --version / login status / --help / exec --help / resume --help / review --help</code>，从 help 文本解析 --json/--output-schema/--output-last-message/--sandbox/--ask-for-approval never。运行时事实来源永远是本机 CLI。</li>
+<li><b>argv-only 安全构造</b>：全程 shell=False + 列表 argv。</li>
+<li><b>Structured Output 适配</b>：把普通 JSON Schema 转 Codex strict-object（去 default/examples、全 required + additionalProperties:false）。</li>
+<li><b>进程监督与取消</b>：跟踪 Popen，cancel 先 terminate() 再 wait(grace_seconds)，超时如实报告「未能即时终止」。</li>
+</ul>
+
+<h2>9.3 Verifier 系统（verifier/）</h2>
+<ul>
+<li><b>三类内置</b>：command（argv-only，拒 shell 元字符）、http-pipeline（声明式异步，trigger→poll→状态映射→下载报告→cancel，5xx 视为可重试基础设施错误）、subprocess（argv entrypoint + JSON 协议，environment 白名单只放行 7 项）。</li>
+<li><b>secret 脱敏</b>：manifest 里 secret 是「reference, never value」，值只在执行时注入环境；SecretRedactor 覆盖 raw/URL/base64/base64-urlsafe 四变体；StreamingSecretRedactor 处理跨 chunk 泄漏。</li>
+<li><b>生命周期</b>：draft → validated → tested → dry_run（每步需 passed 证据）→ freeze；verify_frozen 每次执行前重算 hash，漂移即拒绝。</li>
+</ul>
+
+<h2>9.4 Review 系统（review/ + delivery/review.py）</h2>
+<ul>
+<li><b>ReadOnlyRoleRunner</b>：reviewer/observer 执行前校验 role + read-only + fresh Session；observer 前后取 fingerprint，被污染则抛 RoleIsolationError。</li>
+<li><b>ReviewFixCoordinator</b>：review → (changes_requested) fix + 重跑受影响 verifier → fresh review，超 max_fix_attempts 返回 BLOCKED。</li>
+<li><b>四维审查</b>：contract/correctness/security/test_adequacy，每维独立 fresh read-only Session；aggregate 任 error/blocked → blocked，否则任 changes_requested → changes_requested，否则 approved。ReviewContext 不含 conversation。</li>
+</ul>
+
+<hr />
+
+<h1>十、图设计与 Discovery（实现边界与演进方向）</h1>
+
+<h2>10.1 已实现的图能力</h2>
+<ul>
+<li><b>默认编译</b> → 固定标准串行图，Verifier 数量随 Contract 变化，并带 repair/review_fix 回环。</li>
+<li><b>图协议</b> → 封闭节点类型和受限条件，支持静态校验与 canonical hash。</li>
+<li><b>并行底座</b> → 显式 parallel/subgraph/join、有界本机并发、durable branch state、确定性 join。</li>
+</ul>
+<p>尚未实现的是“从 Contract 复杂度自动选择拓扑”。确定性多模板是下一步建议，不是当前代码能力。</p>
+
+<h2>10.2 Discovery 当前实现</h2>
+<p>确定性预扫限制为 500 文件/2MB；随后固定询问 verification、acceptance、dependencies、conventions、permissions、delivery、budget 七类问题。独立的 Codex Discovery Adapter 能生成 <code>missing_information</code>，但尚未接入队列，因此没有动态追问与 <code>max_rounds</code>。</p>
+
+<hr />
+
+<h1>十一、Human-in-the-loop 与交付</h1>
+
+<h2>11.1 意图编译 fail-closed（conversation/compiler.py）</h2>
+<p>HumanMessage（不可变，先落库）→ IntentCompiler → ControlIntent。规则匹配而非 LLM，多动作/歧义/缺目标 → 不执行要求澄清；危险动作强制 requires_confirmation；置信度低于阈值不执行。</p>
+
+<h2>11.2 契约冻结（contracts/repository.py）</h2>
+<pre><code>def _confirmed(message: HumanMessage) -&gt; bool:
+    value = message.content.casefold()
+    return any(token in value for token in ("confirm", "确认", "同意", "批准"))
+
+def freeze(self, draft_id, confirmation) -&gt; FrozenContract:
+    if not _confirmed(confirmation):
+        raise ContractRevisionError("explicit Human confirmation is required")
+    ...</code></pre>
+<p>append-only 修订：<code>apply_delta</code> 强制 delta 作用于最新 frozen revision，新 revision 自动 supersedes；<code>replace_frozen</code> 无论怎样都抛错——「替换契约」这个操作在系统里不存在。</p>
+
+<h2>11.3 交付与验收（delivery/）</h2>
+<p>十文件报告 bundle 从持久化事实确定性编译，不依赖最后一个 Agent Session。Requirement Matrix 只信任 immutable 或 sha256 证据，否则 fail-closed 为 unverified。accept 只写 append-only 记录，<code>merge_performed=False</code> 硬编码——<b>整个系统没有 merge API</b>。</p>
+
+<hr />
+
+<h1>十二、设计亮点与面试加分项</h1>
+
+<ul>
+<li><strong>契约冻结 + 失败分类 + 职责隔离</strong>三件套——「为什么不会失控」的答案。</li>
+<li><strong>图是数据不是代码</strong>——安全边界，杜绝模型通过图注入可执行逻辑。</li>
+<li><strong>无法 exactly-once 处「诚实披露而非猜测重试」</strong>——最值得记住的设计哲学。</li>
+<li><strong>类型层把设计不变量物理化</strong>——查询只读、failed/error 分离、reviewer 只读，都在 Pydantic validator / __post_init__ 里。</li>
+<li><strong>协议即代码</strong>——36 个 JSON Schema + drift 测试。</li>
+<li><strong>四种等价入口，薄前端</strong>——CLI/插件/MCP/UI 共享同一 Human Gateway，权威状态只在 SQLite。</li>
+<li><strong>可观测性非权威</strong>——telemetry 永不参与 routing/recovery，exporter 失败不影响 Runtime。</li>
+</ul>
+
+<hr />
+
+<h1>十三、一句话收束</h1>
+
+<blockquote>
+<strong>「自然语言先落库 → 确定性编译成意图 → 固定澄清形成契约 → 冻结锁定事实 → 编译标准图 → 状态机跑图（失败/异常分开、屏障可停、checkpoint 可恢复、副作用披露不重试）→ 从持久化事实编译出证据链 → 人最后拍板，永不自动合并。」</strong>
+</blockquote>
+
+<p>其中每一环都在回答同一个问题：<strong>「把推理交给模型，把控制交给确定性代码」——在这个分离之上，系统才是可恢复、可审计、可叫停的。</strong></p>
+
+</div>
+</div>
+
+<!-- ==================== Tab 5: 面试 Q&A ==================== -->
+<div class="tab-content" id="tab5">
+
+<div class="card">
+<h2>面试高频问题（点击展开答案）</h2>
+<p style="color:var(--text-dim);font-size:0.85em">按 8 大模块分组，每题含主问题 + 面试官可能的追加追问。回答遵循「先结论 → 再机制 → 再为什么」的结构。</p>
+</div>
+
+<div class="card"><h2>模块 1：架构定位与设计思想</h2></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q1：叫 Graph Engineering，和 LangGraph / 普通 Agent 编排框架有什么区别？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>结论：</b>LangGraph 等解决「把 LLM 调用组织成图」，节点是 LLM/工具，状态靠模型上下文/内存。本项目核心是<b>自治开发的「控制层」</b>：图是持久化执行图，Runtime 确定性（GraphRuntime 是同步串行调度器），只有 agent 节点调 LLM。</p>
+<p><b>三个差异化：</b>① 契约冻结（禁止替换）；② 失败语义分类（failed vs error）；③ Human 正交控制面（查询走独立 Observer）。</p>
+<p><b>一句话：</b>它们管「怎么让模型多步协作」，我管「怎么让多步协作可恢复、可审计、可叫停」。</p>
+</div></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q2：Harness / Loop / Graph 三者的关系？为什么你说三层都覆盖了？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>结论：</b>三者是递进吸收，不是替代。Harness 管单个节点的工具/权限/上下文；Loop 管单个任务靠反馈收敛；Graph 管多 Agent + 工具 + 外部系统 + 人工边界的编排。</p>
+<p><b>关键理解：</b>Loop 没有死，它「退」成了 Graph 每个节点内部的运行机制（每个 agent 节点内部仍在自循环）；Graph 也没有取代 Harness，任何一层都需要 Harness 打底。</p>
+<p><b>本项目落点：</b>Harness=职责隔离的沙箱；Loop=测试失败→修复、审查失败→重验、异常→重试的反馈闭环；Graph=持久化执行图 + 条件路由 + Human-in-the-loop。</p>
+<p><b>追加追问「固定流程是不是限制？」</b>——是。当前默认 Compiler 使用固定串行模板，这是为了先锁定可恢复与可审计语义；Phase 6B 已补并行执行底座，但复杂度到拓扑的自动映射仍待实现。我不会把路线图说成现状。</p>
+</div></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q3：为什么 Python + SQLite，不是 Go + Postgres？为什么单机串行？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>结论：</b>MVP 阶段化交付 + ADR 冻结决策。核心价值在「控制层的正确性设计」而非「高并发基础设施」，Python + SQLite 让状态机、协议、迁移快速迭代且可被任何人审计。</p>
+<p><b>关键：</b>SQLite 是权威状态源；Phase 6B 已在单机内增加有界并发、原子共享预算和 durable branch state。它仍不是分布式调度器。</p>
+<p><b>追加追问「要不要上分布式」</b>——分布式调度是明确的非目标，我不以替代 Temporal/Dagster 为目标；当前聚焦单机可控的自治开发闭环。</p>
+</div></div>
+
+<div class="card"><h2>模块 2：持久化、恢复与一致性</h2></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q4：进程崩溃后怎么不重复触发外部副作用（重复建 PR / 发 CI）？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>结论：</b>四层防线：</p>
+<ol>
+<li><b>checkpoint 时机</b>：外部 handle 拿到后 / 结果写入后 / 路由前。</li>
+<li><b>幂等键</b>：外部触发用 run_id:node_id，HTTP 触发带 Idempotency-Key。</li>
+<li><b>不确定状态显式处理</b>：recover 发现「triggering 但 handle IS NULL」→ 披露而非重试。</li>
+<li><b>PR 幂等键</b>：sha256(repo+run+base+head)，先 _discover 已有 PR 则 checkpoint；网络错误标 UNCERTAIN_EFFECT 拒绝盲重试。</li>
+</ol>
+<p><b>一句话：</b>无法 exactly-once 处，用「诚实披露 + 停止」而非「猜测重试」。</p>
+</div></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q5：Human 查询进度为什么不污染 Coding Agent？怎么证明？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>结论：</b>四层隔离：① 读路径 mode=ro 只读连接；② Session 隔离（查询走独立 read-only Observer）；③ fingerprint 校验（查询前后 execution_fingerprint 不变，变了就抛 RoleIsolationError）；④ 成本隔离（Reporter 成本单独记录）。</p>
+<p><b>证明：</b>测试反复查询后 fingerprint 不变、executor.calls 为空、workspace 文件不变。</p>
+</div></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q6：checkpoint 怎么防止恢复到被篡改的图？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>结论：</b>checkpoint 存 graph_hash/contract_hash，恢复时 _validate_run_lineage 校验一致否则拒绝；另有 FrozenInputs.verify 校验磁盘上 contract/graph/verifier/lock 四类文件 hash。</p>
+<p><b>追加追问「hash 变了会怎样」</b>——抛 FrozenInputMismatch / RecoveryError，fail-closed 拒绝恢复，绝不带着被篡改的图继续跑。</p>
+</div></div>
+
+<div class="card"><h2>模块 3：Runtime 编排与反馈闭环</h2></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q7：测试失败和测试跑不起来怎么区分？为什么这么重要？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>结论：</b>_node_status 把 Verifier 结果分类：failed→修复（代码错），error→重试/终止（环境抖）。</p>
+<p><b>为什么：</b>CI 网络抖动若当成代码失败，会让 Implementer 白改一轮正确代码甚至引入新 bug。HTTP Verifier 的 5xx 显式归类为可重试基础设施错误；Command Verifier 的 timeout 归 error 且 retryable=True。</p>
+<p><b>一句话：</b>「代码写错」和「环境抖了」需要完全不同的应对，这是反馈闭环正确性的前提。</p>
+</div></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q8：修复循环怎么防死循环？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>结论：</b>三层预算：① 边级 max_iterations + edge_traversals 计数；② run 级 repair_iterations vs max_repair_iterations；③ node 级 max_repair_iterations/max_executor_calls/max_duration_seconds/max_cost_units。任一超限 → BUDGET_EXHAUSTED 终态。</p>
+</div></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q9：条件路由为什么不用任意 Python 表达式？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>结论：</b>RouteCondition 是数据不是代码，只用三字段 + 四操作符。</p>
+<p><b>三个理由：</b>① 图可能由 Designer/模型产出，任意表达式 = 注入面；② 确定性、可静态校验；③ 可序列化为 JSON Schema。</p>
+</div></div>
+
+<div class="card"><h2>模块 4：多 Agent 协作与 Harness（职责隔离/安全）</h2></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q10：怎么保证 Reviewer 不「既当运动员又当裁判」甚至偷改代码？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>结论：</b>五层防线：</p>
+<ol>
+<li><b>类型层</b>：reviewer/observer 的 ExecutorRequest 强制 read-only。</li>
+<li><b>Session 层</b>：should_rotate 对非 implementer 恒 True，每次 review 都 fresh。</li>
+<li><b>输入隔离</b>：ReviewContext 不含 conversation，Reviewer 只能看冻结 Contract + diff + 客观证据。</li>
+<li><b>输出约束</b>：Reviewer 不能改代码，只能 approved→deliver / changes_requested→fix→fresh review / blocked→stop。</li>
+<li><b>冻结</b>：验收 Verifier 对实现 Agent 只读，执行前 hash 校验。</li>
+</ol>
+</div></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q11：secret 怎么防泄漏到日志 / prompt / 报告？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>结论：</b>四层：① 引用注入（secret 是「reference，never value」，值只在执行时注入环境）；② 多形态脱敏（raw/URL/base64/base64-urlsafe）；③ 流式脱敏（跨 chunk）；④ 全链路（进 Artifact 前 redact）。</p>
+<p><b>一句话：</b>值不进 prompt + 全形态脱敏 + 全链路兜底。</p>
+</div></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q12：动态生成的 Verifier 本质是待执行代码，怎么保证安全？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>诚实作答：</b>有 manifest 能力白名单、argv-only、host allowlist、静态扫描 + 合约测试 + dry run、确认页展示行为摘要、冻结 hash 校验。</p>
+<p><b>但明确承认：</b>MVP 不能宣称动态代码「完全安全」，真正强隔离（容器）是后续项。容器 Verifier 已经做进系统（不可变镜像身份 + 默认拒绝网络 + 资源限额）。</p>
+<p><b>加分点：</b>「知道边界在哪」的坦诚比吹安全更得分。</p>
+</div></div>
+
+<div class="card"><h2>模块 5：图设计与 Discovery（可伸缩的控制面）</h2></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q13：执行图是怎么设计的？简单需求和复杂需求用同一张图吗？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>结论：</b>当前默认路径是同一类标准串行图；底层另有显式并行图能力：</p>
+<ul>
+<li><b>Compiler</b> → 固定 inspect/implement/verifiers/repair/review/review_fix/deliver 模板。</li>
+<li><b>Parallel Runtime</b> → 能执行显式声明的 parallel/subgraph/join。</li>
+<li><b>缺口</b> → 还不会从需求复杂度自动选择模板。</li>
+</ul>
+<p><b>下一步：</b>用验收条件数、Verifier、模块依赖等可解释信号做确定性模板选择；图仍保持数据、可静态校验、可 hash 复现。</p>
+<p><b>追加追问「为什么不让模型直接生成图」</b>——自由生成会扩大注入和不可复现风险。即便未来用模型提方案，也应由确定性 schema、静态验证和权限策略收口。</p>
+</div></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q14：需求澄清是固定问几个问题吗？怎么保证复杂需求不漏问？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>结论：</b>当前就是固定七类问题，复杂需求可能漏问：</p>
+<ol>
+<li>确定性预扫仓库（列文件，限 500 文件/2MB）。</li>
+<li>创建 verification、acceptance、dependencies、conventions、permissions、delivery、budget 七个 UnknownItem。</li>
+<li>逐项持久化回答，队列为空就生成草稿。</li>
+<li>Codex Discovery Adapter 虽能输出 missing_information，但尚未接入主流程，也没有 max_rounds。</li>
+</ol>
+<p><b>改进方向：</b>把 Adapter 当候选缺口生成器，由确定性代码负责去重、轮次预算和收敛条件。</p>
+</div></div>
+
+<div class="card"><h2>模块 6：Human-in-the-loop 与交付</h2></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q15：自然语言「暂停一下」怎么变成系统动作？意图判错怎么办？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>流程：</b>HumanMessage（不可变，先落库）→ IntentCompiler.compile → 强类型 ControlIntent → 确定性 Runtime 执行。</p>
+<p><b>fail-closed：</b>多动作/歧义/缺目标 Run → 不执行要求澄清；危险动作强制 requires_confirmation；置信度低于阈值不执行。</p>
+<p><b>诚实点：</b>当前是确定性规则匹配而非 LLM 分类——有意权衡（确定性、可审计、fail-closed），也是已知局限。</p>
+</div></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q16：默认不自动合并，accept 到底做了什么？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>结论：</b>accept 只写 append-only HumanAcceptanceRecord，merge_performed 硬编码 False。<b>整个系统没有 merge API</b>。</p>
+<p><b>产品哲学：</b>不可逆的「合进主干」永远留给 Human。系统只负责「实现 + 验证 + 审查 + 产出证据」。</p>
+</div></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q17：所有终态都生成报告，包括失败/中断/取消？为什么？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>结论：</b>是。6 个终态（succeeded/failed/error/interrupted/cancelled/rejected）都生成 FinalReport。</p>
+<p><b>为什么：</b>中断/失败后，残留副作用、未验证项、能否继续/修订正是 Human 决策最需要的信息。报告从持久化事实确定性编译，不依赖最后一个 Agent Session。</p>
+</div></div>
+
+<div class="card"><h2>模块 7：工程质量与测试</h2></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q18：怎么保证改动不破坏之前阶段？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>结论：</b>阶段化 + 基线 + 分层测试 + 协议稳定 + 静态检查。Phase 6G 交付证据为 262 passed / 4 个 opt-in real-Codex skipped，mypy strict + Ruff，36 个 JSON Schema drift 测试。</p>
+<p><b>分层：</b>单元（状态机/路由/意图编译/secret 脱敏/hash 冻结）→ 集成（Fake Executor 完整图/修复循环/中断恢复/防重复触发）→ E2E（真实 Codex 受限任务）。</p>
+</div></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q19：真实 Codex / 真实 GitHub E2E 做了吗？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>诚实：</b>Codex Adapter 有需显式启用的小范围真实测试，但正式 <code>ge run</code> 自治入口仍只接 deterministic fixture；GitHub 也只用隔离本地 HTTP provider fixture 验证，不能宣称真实外部 E2E。</p>
+<p><b>加分点：</b>「明确标出 unverified 项」本身就是「证据可信度分级」设计思想的体现——区分 deterministic fixture / real local / real external / blocked / unverified，绝不把 fixture 当真实证据。</p>
+</div></div>
+
+<div class="card"><h2>模块 8：开放问题与反思</h2></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q20：最大不足 / 重做会改什么？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<ol>
+<li>意图编译是规则匹配，复杂自然语言不够鲁棒（下一步引入结构化 LLM 分类，保留 fail-closed + 置信度 + 确认策略）。</li>
+<li>Runtime 曾为 foreground/recoverable，现已加 Service/IPC/MCP 形成持久服务。</li>
+<li>单机串行 → 已加并行图，但分布式调度仍是明确非目标。</li>
+<li>动态 Verifier 安全边界——静态扫描 + 合约测试不是强隔离，容器 Verifier 已补上。</li>
+<li>真实 GitHub/真实 collector E2E 受授权限制未全量验证。</li>
+</ol>
+</div></div>
+
+<div class="card"><div class="collapse-header" onclick="toggleCollapse(this)"><span><strong>Q21：最想强调的一个技术决策？</strong></span><span class="icon">&#9654;</span></div><div class="collapse-body">
+<p><b>「契约冻结 + 失败语义分类 + 职责隔离」三件套。</b>它是「为什么不会失控」的答案，最能体现「在做控制层而非堆 prompt」的设计成熟度。</p>
+<p><b>升华：</b>整个项目读通的标志，是能默念出那条主线——「自然语言先落库 → 确定性编译成意图 → 澄清出契约 → 冻结 → 编译标准图 → 状态机跑图 → 编译出证据链 → 人拍板，永不自动合并」。同时要主动补一句：真实 Codex 接线、动态 Discovery 和复杂度模板仍是下一步。</p>
+</div></div>
+
+</div>
+
+<!-- ==================== Tab 6: 现状与路线 ==================== -->
+<div class="tab-content" id="tab6">
+
+<div class="card">
+<h2>2026-08-26 实现快照：先分清“做了什么”和“能否真实使用”</h2>
+<p>Phase 0–6G 已通过 PR #7 合入 <code>main</code>，package 版本为 <code>0.8.0</code>。它已经是一个可安装、可测试、可演示控制语义的 MVP / 工程原型，但还不是开箱即用的真实自治编码产品。</p>
+<table class="data-table">
+<tr><th>层级</th><th>状态</th><th>代表能力</th></tr>
+<tr><td>协议与控制内核</td><td><span class="hl-green">已实现</span></td><td>强类型协议、migration 1–10、串行/并行 Runtime、屏障、预算、恢复、证据与报告</td></tr>
+<tr><td>Agent/provider 边界</td><td><span class="hl-green">已实现</span></td><td>Codex Adapter、Executor Protocol、Context/Handoff、GitHub/container/OTLP 边界</td></tr>
+<tr><td>产品入口</td><td><span class="hl-orange">部分接通</span></td><td>CLI、Service、IPC、MCP、Plugin、UI 可用；<code>ge run</code> 仍只接 deterministic fixture</td></tr>
+<tr><td>真实外部组合</td><td><span class="hl-red">证据不足</span></td><td>真实 GitHub、container daemon、collector、浏览器矩阵、Linux/macOS 未完整资格验证</td></tr>
+</table>
+<div class="step-box orange"><p><b>面试表达：</b>“我完成了控制层内核和 provider 边界，并用 fixture 锁定恢复/幂等/安全语义；真实 Codex 的正式自治入口还差依赖注入与资格闭环。”这比含糊地说“已经能全自动写项目”更可信。</p></div>
+</div>
+
+<div class="card">
+<h2>Phase 6 到底补了什么</h2>
+<table class="data-table">
+<tr><th>阶段</th><th>增量</th><th>核心不变量</th></tr>
+<tr><td>6A Service / MCP / Plugin</td><td>foreground Runtime Service、认证 loopback IPC、MCP 五工具兼容前缀与扩展控制、薄 Codex Plugin</td><td>入口不持有权威状态，不直接写 SQLite/worktree</td></tr>
+<tr><td>6B Parallel Graph</td><td>parallel/subgraph/join、有界并发、durable branch/attempt/checkpoint、共享预算</td><td>join 按声明顺序聚合；失败优先级 fail closed；barrier 覆盖 active/pending</td></tr>
+<tr><td>6C Container Verifier</td><td>不可变镜像身份、资源限额、mount/network/secret 策略、恢复与 cleanup</td><td>默认无网络；逃逸拒绝；已有 handle 只查询不重启；残留副作用必须披露</td></tr>
+<tr><td>6D Autonomous Delivery</td><td>confirmed/prepared/start 三态分离，durable coordinator 串起实现、验证、审查和报告</td><td>start 幂等；unknown provider effect 停止；accept 永不 merge</td></tr>
+<tr><td>6E Qualification</td><td>版本化证据与 claim matrix、secret guard、可重复 wheel/sdist、clean install/upgrade</td><td>fixture 不冒充 real；blocked/unverified 不映射 passed；资格文件不成为 Runtime 权威</td></tr>
+<tr><td>6F Observability</td><td>dependency-free OTLP-compatible provider、span/metric、采样、buffer/batch、失败隔离</td><td>telemetry 不参与 route/budget/barrier/terminal authority，exporter 失败不改变业务结果</td></tr>
+<tr><td>6G Project UI</td><td>无新运行依赖的 loopback HTML UI、snapshot/polling、Human message/confirmation</td><td>UI 不直读 SQLite；无 browser authority/storage；Origin/Host/CSRF/CSP/no-store 等安全门禁</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h2>当前真正可以怎样使用</h2>
+<ol>
+<li><b>安装：</b>Python 3.12/3.13 源码安装 <code>pip install -e .</code>。尚未发布 PyPI。</li>
+<li><b>需求准备：</b><code>ge start --project-root .</code> 建立持久对话，回答七类问题，<code>confirm</code> 后冻结 Contract 并准备 Run。没有 <code>ge init</code>。</li>
+<li><b>服务与 UI：</b>一个终端运行 <code>ge service start</code>，另一个运行 <code>ge ui serve --port 8765</code>，手动打开输出的 loopback URL。</li>
+<li><b>控制层演示：</b><code>ge run RUN_ID --deterministic-fixture</code> 可走完整编排/交付 fixture；它不会调用真实 Codex。</li>
+<li><b>工程集成：</b><code>ge mcp-server</code> 与仓库内 Plugin 提供薄控制入口；使用前仍需安装/连接和真实环境资格。</li>
+</ol>
+<div class="step-box red"><p><b>不要这样演示：</b>不要在镜头前运行 fixture 后说“Codex 自动写完了”；不要把本地 GitHub HTTP fixture 说成真实 PR；不要把 container policy 单测说成真实 Docker 隔离证据。</p></div>
+</div>
+
+<div class="card">
+<h2>三个最重要的代码缺口</h2>
+<h3>1. 真实 Codex 自治接线</h3>
+<p><code>HumanGateway.run()</code> 明确拒绝除 <code>deterministic_git_fixture</code> 外的 provider。缺的不是 Adapter，而是 provider factory、授权配置、Coordinator 注入、真实 Verifier/Reviewer 组合以及恢复 E2E。</p>
+<h3>2. 动态 Discovery</h3>
+<p><code>CodexDiscoveryAdapter</code> 和 <code>DiscoveryService</code> 目前是两条分开的线。需要把 <code>missing_information</code> 规范化为带来源/轮次的 UnknownItem，并增加去重、总量与 <code>max_rounds</code>。</p>
+<h3>3. 复杂度驱动的图编译</h3>
+<p>Runtime 能跑并行图，不代表 Compiler 会设计并行图。默认编译器仍是固定串行模板。建议先用可解释的 Contract 信号做确定性多模板选择，再评估是否允许模型提出受 schema 约束的图草案。</p>
+</div>
+
+<div class="card">
+<h2>项目缺陷：不仅是“还没做完”</h2>
+<ul>
+<li><b>抽象领先于产品接线：</b>provider-neutral 边界很多，但用户主路径仍落在 fixture，容易产生“能力很多却不知道怎么用”的落差。</li>
+<li><b>StateStore 体量与 migration 委派复杂：</b>十个迁移阶段累积在单一 SQLite 权威中，兼容视图与 repository 职责未来需要按领域拆分，但不能破坏单一事实源。</li>
+<li><b>同步与异步模型混合：</b>串行 Runtime、并行协调、外部 poll/cancel 和 foreground Service 组合复杂，真实 provider 接入后最容易暴露取消竞态与慢客户端问题。</li>
+<li><b>规则意图编译覆盖有限：</b>优点是确定和 fail closed，缺点是同义表达、复合命令和跨语言鲁棒性不足。</li>
+<li><b>安全保证依赖环境：</b>allowlist、hash、secret redaction 能约束协议，但 subprocess/container 的最终隔离强度仍取决于 OS、runtime 和部署权限。</li>
+<li><b>没有 hosted/multi-user 模型：</b>loopback + project-local token 适合单用户本机，不覆盖远程访问、RBAC、审计主体联邦、TLS 或多租户。</li>
+<li><b>测试数量不是外部可信度：</b>262 passed 说明回归面广，不等于真实 Codex/GitHub/Docker/浏览器/三平台都通过。</li>
+</ul>
+</div>
+
+<div class="card">
+<h2>未来路线：按价值而不是按“技术炫酷度”排序</h2>
+<div class="code">P0 真实 Codex 自治接线
+  └─ provider config / permission summary / coordinator injection / recover E2E
+P0 动态 Discovery
+  └─ candidate missing info → deterministic normalization/dedup/budget
+P0 确定性多模板 Compiler
+  └─ serial / review-heavy / explicit parallel
+P1 真实资格矩阵
+  └─ Codex Plugin · GitHub · Docker/Podman · OTLP · Browser · Win/Linux/macOS
+P2 产品化
+  └─ init/onboarding · release channel · upgrade/uninstall · diagnostics
+P3 可选演进
+  └─ Claude Code adapter · remote worker（只有真实需求出现时才做）</div>
+<p>不建议先做分布式调度、复杂前端或更多 Schema。当前边际价值最高的是把已有边界接成一条真实、可重复、可解释的用户闭环。</p>
+</div>
+
+<div class="card">
+<h2>面试讲述模板：三分钟讲清，不回避限制</h2>
+<ol>
+<li><b>问题：</b>传统 Coding Agent 把需求、执行状态、验收和副作用都塞进一次会话，长任务不可恢复也难审计。</li>
+<li><b>核心决策：</b>把推理交给 Agent，把控制交给持久化 Runtime；Contract 冻结、状态在 SQLite、证据内容寻址、图是受限数据。</li>
+<li><b>最难工程点：</b>failed/error 分类决定修代码还是重试环境；checkpoint + 幂等键处理不确定外部副作用；只读角色与 barrier 保证查询/审查/中断不污染实现。</li>
+<li><b>Phase 6 增量：</b>补上 Service/MCP/Plugin、并行图、container、自治协调器、资格证据、observability 和本地 UI。</li>
+<li><b>诚实边界：</b>正式自治入口仍只接 fixture；真实 Codex 接线、动态 Discovery、自动拓扑选择和外部资格矩阵是下一阶段。</li>
+<li><b>反思：</b>项目证明了控制层语义，但抽象多于产品接线；下一步应优先完成真实闭环，而不是继续扩展概念表面积。</li>
+</ol>
+<div class="formula">最有说服力的不是“功能全做完了”，而是能指出：哪些是权威事实、哪些是 fixture 证据、哪里 fail closed、下一步为什么这样排。</div>
+</div>
+
+</div>
+
+</div>
+
+<script>
+function switchTab(index) {
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === index));
+  document.querySelectorAll('.tab-content').forEach((c, i) => c.classList.toggle('active', i === index));
+}
+function toggleCollapse(header) {
+  header.classList.toggle('open');
+  header.nextElementSibling.classList.toggle('open');
+}
+</script>
+</body>
+</html>
